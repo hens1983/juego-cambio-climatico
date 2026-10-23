@@ -1,0 +1,347 @@
+<title>Guardianes de Cabo de Gata</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Silkscreen:wght@400;700&display=swap">
+<style>
+/* Layout: pantalla completa vertical de móvil. HUD arriba, mundo de bloques en canvas, barra de herramientas abajo. */
+:root{
+  --bg:#1f1b24;        /* noche de volcán */
+  --panel:#2e2836;     /* roca oscura */
+  --line:#4a4153;
+  --text:#f4ecdc;      /* yeso */
+  --muted:#b9ad9c;
+  --accent:#f2a93b;    /* sol de Almería */
+  --good:#7bd88f;
+  --bad:#ff7a63;
+  --sea:#3a8fe0;
+  --display:'Silkscreen','Courier New',monospace;
+  --body:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  touch-action:manipulation;-webkit-user-select:none;user-select:none}
+#app{height:100%;display:flex;flex-direction:column;gap:8px;padding-block:8px;max-width:560px;margin:0 auto}
+.hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.stat{background:var(--panel);border:2px solid var(--line);padding:5px 4px;text-align:center;min-width:0}
+.stat b{display:block;font-family:var(--display);font-size:15px;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat small{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.stat.warn b{color:var(--bad)}
+.stat.ok b{color:var(--good)}
+.bar{height:10px;background:var(--panel);border:2px solid var(--line);position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.coll{display:flex;gap:4px}
+.coll span{width:18px;height:18px;border:2px solid var(--line);background:var(--panel)}
+#wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touch-action:none}
+.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tool{font:inherit;color:var(--text);background:var(--panel);border:3px solid var(--line);padding:8px 4px;min-height:58px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.tool .ic{font-size:22px;line-height:1}
+.tool .lb{font-family:var(--display);font-size:12px}
+.tool .cs{font-size:12px;color:var(--muted)}
+.tool.on{border-color:var(--accent);background:#3b3040}
+.tool.no{opacity:.45}
+.tool:focus-visible,.btn:focus-visible,.opt:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 12px;font-weight:700;font-size:14px;max-width:calc(100% - 32px);text-align:center;opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
+#toast.show{opacity:1}
+#modal{position:fixed;inset:0;background:rgba(15,12,18,.82);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20;overflow-y:auto}
+#card{background:var(--panel);border:3px solid var(--accent);max-width:440px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow-y:auto}
+#card h2{font-family:var(--display);font-size:20px;margin:0;line-height:1.2;text-wrap:balance}
+#card p{margin:0;line-height:1.45;font-size:15.5px}
+.tag{display:inline-block;font-size:12px;background:var(--bg);border:2px solid var(--line);padding:2px 8px;color:var(--accent);align-self:flex-start;letter-spacing:.03em}
+.sw{width:44px;height:44px;border:3px solid var(--text);flex:none}
+.head{display:flex;gap:12px;align-items:center}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt,.btn{font:inherit;font-weight:700;color:var(--text);background:var(--bg);border:3px solid var(--line);padding:11px 12px;text-align:left;cursor:pointer;min-height:46px}
+.btn{background:var(--accent);color:#2a1d08;border-color:var(--accent);text-align:center;font-family:var(--display)}
+.opt.right{border-color:var(--good);background:#1f3a2a}
+.opt.wrong{border-color:var(--bad);background:#3f2420}
+.stats-end{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stats-end div{background:var(--bg);border:2px solid var(--line);padding:8px;font-size:13px;color:var(--muted)}
+.stats-end b{display:block;font-family:var(--display);font-size:18px;color:var(--text)}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+</style>
+
+<div id="app">
+  <div class="hud" id="hud">
+    <div class="stat"><b id="sYear">2025</b><small>Año</small></div>
+    <div class="stat" id="stCo2"><b id="sCo2">420</b><small>CO₂ ppm</small></div>
+    <div class="stat" id="stTemp"><b id="sTemp">+1.1°</b><small>Temp.</small></div>
+    <div class="stat" id="stSea"><b id="sSea">0</b><small>Mar cm</small></div>
+    <div class="stat"><b id="sSci">6</b><small>Ciencia</small></div>
+  </div>
+  <div class="bar" aria-label="Progreso hasta 2050"><i id="prog"></i></div>
+  <div class="row"><span id="hint">Toca un bloque con el pico para investigar.</span><span class="coll" id="coll" title="Rocas descubiertas"></span></div>
+  <div id="wrap"><canvas id="cv" aria-label="Mundo de bloques de Almería"></canvas></div>
+  <div class="tools" id="tools">
+    <button class="tool on" data-t="pick"><span class="ic">⛏️</span><span class="lb">PICO</span><span class="cs">gratis</span></button>
+    <button class="tool" data-t="tree"><span class="ic">🌳</span><span class="lb">ÁRBOL</span><span class="cs">3 🔬</span></button>
+    <button class="tool" data-t="solar"><span class="ic">☀️</span><span class="lb">PLACA</span><span class="cs">6 🔬</span></button>
+  </div>
+</div>
+<div id="toast"></div>
+<div id="modal" hidden><div id="card"></div></div>
+
+<script>
+(function(){
+const COLS=10, ROWS=15, SURF=5, LAND0=2, LAND1=7, YEAR_SEC=4, END_YEAR=2050;
+const COST={tree:3,solar:6};
+const ROCKS={
+ 1:{n:'Suelo',kind:'Suelo',sci:1,c:'#8a5a32',a:'#6d4524',b:'#a4713f',
+  fact:'El suelo nace cuando la lluvia, el viento y las raíces rompen la roca poco a poco. En Almería hay poco y se lo lleva la erosión cuando llueve de golpe.',
+  q:'¿Qué ayuda a que el agua no se lleve el suelo?',o:['Las raíces de las plantas','Quitar todos los árboles','Que haga más calor'],a_:0},
+ 2:{n:'Caliza',kind:'Roca sedimentaria',sci:2,c:'#d6cdb3',a:'#bdb396',b:'#ebe4cf',
+  fact:'Se forma con conchas y esqueletos de animales marinos que se acumulan en el fondo del mar. Guarda carbono dentro durante millones de años.',
+  q:'¿Cómo se formó la caliza?',o:['Por lava que se enfría','Por restos marinos acumulados','Por un meteorito'],a_:1},
+ 3:{n:'Yeso',kind:'Roca sedimentaria',sci:2,c:'#ece9e0',a:'#cfd4d8',b:'#fbfaf5',
+  fact:'Se forma cuando se evapora el agua de mares antiguos y quedan las sales. En Sorbas el agua ha disuelto el yeso y ha creado cuevas enormes.',
+  q:'¿Qué le pasa al yeso con el agua?',o:['Se disuelve poco a poco y forma cuevas','Se convierte en hierro','No le pasa nada'],a_:0},
+ 4:{n:'Andesita',kind:'Roca ígnea (volcánica)',sci:3,c:'#6d6572',a:'#4f4855',b:'#9a6a66',
+  fact:'Cabo de Gata es un antiguo volcán. Hace unos 15 millones de años salió magma que se enfrió rápido al llegar a la superficie.',
+  q:'La andesita viene de…',o:['Magma que se enfría','Conchas del mar','Fósiles de dinosaurio'],a_:0},
+ 5:{n:'Mármol',kind:'Roca metamórfica',sci:4,c:'#f2f0f0',a:'#b8b6c4',b:'#ffffff',
+  fact:'El mármol de Macael nació cuando la caliza quedó enterrada y recibió mucha presión y calor, sin llegar a fundirse.',
+  q:'¿Qué transforma la caliza en mármol?',o:['Presión y calor en el interior','Un río que la arrastra','El viento del desierto'],a_:0}
+};
+const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+let T=24, dpr=1, S;
+
+function hash(c,r,k){const x=Math.sin(c*127.1+r*311.7+k*74.7)*43758.5453;return x-Math.floor(x)}
+function lerp(a,b,t){return a+(b-a)*t}
+function mix(c1,c2,t){const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));const a=p(c1),b=p(c2);return 'rgb('+a.map((v,i)=>Math.round(lerp(v,b[i],t))).join(',')+')'}
+
+function newGame(){
+  const grid=[];
+  for(let r=0;r<ROWS;r++){grid[r]=[];for(let c=0;c<COLS;c++){
+    if(r<SURF)grid[r][c]=0;
+    else if(r===SURF)grid[r][c]=9;
+    else{let t=Math.min(5,Math.floor((r-6)/2)+1);if(r===14)t=5;
+      const j=hash(c,r,3);if(j<.12)t=Math.max(1,t-1);else if(j>.88)t=Math.min(5,t+1);grid[r][c]=t}
+  }}
+  S={year:2025,yt:0,t:0,ppm:420,sci:6,tool:'pick',found:{},grid,obj:Array(COLS).fill(null),smoke:[],paused:true,over:false,spawn:0};
+  S.obj[4]={k:'tree',dead:false,born:-9};
+}
+const temp=()=>Math.max(1,1.1+(S.ppm-420)*0.012);
+const waterCols=()=>Math.min(COLS,LAND0+Math.max(0,Math.floor((temp()-1.1)*5)));
+const nSolar=()=>S.obj.filter(o=>o&&o.k==='solar').length;
+const nTrees=()=>S.obj.filter(o=>o&&o.k==='tree'&&!o.dead).length;
+const emis=()=>Math.max(0.3,4-0.7*nSolar());
+
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),1800)}
+function modal(html,after){
+  S.paused=true;const m=$('modal');$('card').innerHTML=html;m.hidden=false;
+  m._after=after;
+}
+function closeModal(){const m=$('modal');m.hidden=true;S.paused=false;const f=m._after;m._after=null;if(f)f()}
+$('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act;
+  if(a==='close')closeModal();
+  else if(a==='again'){newGame();$('modal').hidden=true;refresh();S.paused=false}
+  else if(a==='opt')answer(b);
+});
+
+function intro(){
+  modal(`<h2>Guardianes de Cabo de Gata</h2>
+  <span class="tag">Misión 2025 → 2050</span>
+  <p>La fábrica del pueblo lanza CO₂ y el planeta se calienta. Si el mar sube demasiado, el pueblo se inunda.</p>
+  <p><b>⛏️ Pico:</b> rompe bloques bajo tierra, descubre rocas y gana 🔬 Ciencia.<br>
+  <b>🌳 Árbol</b> y <b>☀️ Placa solar:</b> gástate la Ciencia para bajar el CO₂. Toca una columna de tierra firme para colocarlos.</p>
+  <p>Objetivo: llegar a 2050 con menos de <b>+1.5 °C</b> y el pueblo seco.</p>
+  <button class="btn" data-act="close">¡Empezar!</button>`);
+}
+
+function discover(t){
+  const R=ROCKS[t];
+  modal(`<div class="head"><div class="sw" style="background:${R.c}"></div><div><h2>${R.n}</h2></div></div>
+  <span class="tag">${R.kind}</span>
+  <p>${R.fact}</p>
+  <p><b>${R.q}</b></p>
+  <div class="opts">${R.o.map((o,i)=>`<button class="opt" data-act="opt" data-i="${i}" data-t="${t}">${o}</button>`).join('')}</div>
+  <div id="fb"></div>`);
+}
+function answer(b){
+  const R=ROCKS[b.dataset.t], i=+b.dataset.i, ok=i===R.a_;
+  document.querySelectorAll('.opt').forEach((o,j)=>{o.disabled=true;if(j===R.a_)o.classList.add('right');});
+  if(!ok)b.classList.add('wrong');
+  if(ok)S.sci+=5;
+  $('fb').innerHTML=`<p>${ok?'¡Correcto! +5 🔬':'Casi. La respuesta correcta es: <b>'+R.o[R.a_]+'</b>.'}</p><button class="btn" data-act="close" style="margin-top:10px;width:100%">Seguir</button>`;
+  refresh();
+}
+
+function refresh(){
+  $('sYear').textContent=S.year;
+  $('sCo2').textContent=Math.round(S.ppm);
+  const tp=temp();$('sTemp').textContent='+'+tp.toFixed(1)+'°';
+  const wc=waterCols();$('sSea').textContent=(wc-LAND0)*25;
+  $('sSci').textContent=S.sci;
+  $('stTemp').className='stat'+(tp>1.5?' warn':' ok');
+  $('stCo2').className='stat'+(S.ppm>450?' warn':'');
+  $('stSea').className='stat'+(wc>=6?' warn':'');
+  $('prog').style.width=Math.min(100,((S.year-2025)+S.yt/YEAR_SEC)/(END_YEAR-2025)*100)+'%';
+  document.querySelectorAll('.tool').forEach(b=>{const t=b.dataset.t;b.classList.toggle('on',S.tool===t);b.classList.toggle('no',COST[t]>S.sci)});
+  $('coll').innerHTML=[1,2,3,4,5].map(t=>`<span style="${S.found[t]?'background:'+ROCKS[t].c:''}" title="${S.found[t]?ROCKS[t].n:'?'}"></span>`).join('');
+  $('hint').textContent=S.tool==='pick'?'Toca un bloque con el pico para investigar.':'Toca una columna de tierra firme (verde).';
+}
+
+document.getElementById('tools').addEventListener('click',e=>{
+  const b=e.target.closest('.tool');if(!b||S.paused)return;S.tool=b.dataset.t;refresh();
+});
+
+cv.addEventListener('pointerdown',e=>{
+  if(S.paused||S.over)return;
+  const rc=cv.getBoundingClientRect();
+  const c=Math.floor((e.clientX-rc.left)/rc.width*COLS), r=Math.floor((e.clientY-rc.top)/rc.height*ROWS);
+  if(c<0||c>=COLS||r<0||r>=ROWS)return;
+  const wc=waterCols();
+  if(S.tool==='pick'){
+    const t=S.grid[r][c];
+    if(r<=SURF||t===0||t===9){toast(r<=SURF?'Cava más abajo, bajo la hierba.':'Ya está excavado.');return}
+    S.grid[r][c]=0;S.sci+=ROCKS[t].sci;
+    if(!S.found[t]){S.found[t]=true;refresh();discover(t)}else{toast('+'+ROCKS[t].sci+' 🔬 '+ROCKS[t].n);refresh()}
+  }else{
+    const k=S.tool;
+    if(c<LAND0||c>LAND1||c<wc){toast(c<wc?'Esa zona ya está bajo el mar.':'Planta en la zona de tierra firme.');return}
+    const o=S.obj[c];if(o&&!o.dead){toast('Ya hay algo ahí.');return}
+    if(S.sci<COST[k]){toast('Te faltan '+(COST[k]-S.sci)+' 🔬. Excava más.');return}
+    S.sci-=COST[k];S.obj[c]={k,dead:false,born:S.t};
+    toast(k==='tree'?'🌳 Árbol plantado: absorbe CO₂':'☀️ Placa solar: menos humo de la fábrica');refresh();
+  }
+});
+
+function yearTick(){
+  S.year++;S.sci+=1;
+  const tr=nTrees();
+  S.ppm=Math.max(380,S.ppm+emis()-0.35*tr);
+  if(temp()>1.8&&tr>0&&Math.random()<0.35){
+    const alive=S.obj.map((o,i)=>o&&o.k==='tree'&&!o.dead?i:-1).filter(i=>i>=0);
+    S.obj[alive[Math.floor(Math.random()*alive.length)]].dead=true;toast('Sequía: se ha secado un árbol');
+  }
+  const wc=waterCols();
+  for(let c=0;c<wc&&c<COLS;c++)if(S.obj[c]){S.obj[c]=null;toast('El mar se ha tragado una zona de cultivo')}
+  refresh();
+  if(wc>=8){end(false,'sea')}
+  else if(S.year>=END_YEAR){end(temp()<=1.5,'time')}
+}
+function end(win,why){
+  S.over=true;S.paused=true;
+  const tp=temp(),wc=waterCols();
+  const title=win?'¡Lo conseguiste!':(why==='sea'?'El mar llegó al pueblo':'Demasiado calor');
+  const msg=win?'Llegaste a 2050 con el clima bajo control. Menos humo y más árboles frenaron el calentamiento.'
+    :(why==='sea'?'Con tanto calor el nivel del mar subió y cubrió las casas. Hace falta reducir el CO₂ antes.':'El pueblo sigue en pie, pero la temperatura pasó de +1.5 °C. Prueba con más placas solares y árboles desde el principio.');
+  setTimeout(()=>modal(`<h2>${title}</h2><p>${msg}</p>
+  <div class="stats-end"><div><b>${S.year}</b>año</div><div><b>${Math.round(S.ppm)} ppm</b>CO₂</div>
+  <div><b>+${tp.toFixed(1)} °C</b>temperatura</div><div><b>${Object.keys(S.found).length}/5</b>rocas descubiertas</div></div>
+  <p><b>Para comentar en clase:</b> ¿qué pasó con la costa de Almería en tu partida y qué decisión habría cambiado el resultado?</p>
+  <button class="btn" data-act="again">Jugar otra vez</button>`),500);
+}
+
+/* ---------- dibujo ---------- */
+function rect(x,y,w,h,col){ctx.fillStyle=col;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
+function drawTile(c,r,t){
+  const x=c*T,y=r*T;
+  if(t===0){rect(x,y,T,T,'#2a2230');rect(x+T*.15,y+T*.2,T*.2,T*.15,'#332a3b');return}
+  const R=ROCKS[t===9?1:t];
+  rect(x,y,T,T,R.c);
+  for(let i=0;i<5;i++){
+    const s=T*(.14+hash(c,r,i)*.1);
+    rect(x+hash(c,r,i+9)*(T-s),y+hash(c,r,i+19)*(T-s),s,s,i%2?R.a:R.b);
+  }
+  if(t===5){ctx.strokeStyle=R.a;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+T*.1,y+T*.8);ctx.lineTo(x+T*.9,y+T*.2);ctx.stroke()}
+  ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,T-1,T-1);
+  if(t===9){
+    const hot=temp()>1.6;
+    rect(x,y,T,T*.32,hot?'#e0c27a':'#58b84a');
+    for(let i=0;i<3;i++)rect(x+hash(c,r,i+30)*T*.8,y+(i%2)*T*.1,T*.15,T*.12,hot?'#c9a85c':'#3f9a35');
+  }
+}
+function drawTree(c,o){
+  const g=Math.min(1,(S.t-o.born)/1.5);
+  const bx=c*T, by=(SURF-1)*T;
+  rect(bx+T*.4,by+T*(1-.65*g),T*.2,T*.65*g,o.dead?'#5a4630':'#6b4423');
+  const lh=T*.95*g, lw=T*.8*g;
+  const lx=bx+T*.5-lw/2, ly=by+T*(1-.65*g)-lh*.75;
+  const col=o.dead?'#8a7a46':'#2f8f3a', col2=o.dead?'#6f6236':'#237a2f', col3=o.dead?'#a4935a':'#4cb04f';
+  rect(lx,ly,lw,lh,col);
+  for(let i=0;i<5;i++)rect(lx+hash(c,i,50)*lw*.8,ly+hash(c,i,51)*lh*.8,lw*.2,lh*.2,i%2?col2:col3);
+}
+function drawSolar(c){
+  const x=c*T,y=(SURF-1)*T;
+  rect(x+T*.46,y+T*.55,T*.08,T*.45,'#8d8d99');
+  ctx.fillStyle='#2a63c9';ctx.beginPath();
+  ctx.moveTo(x+T*.06,y+T*.58);ctx.lineTo(x+T*.94,y+T*.28);ctx.lineTo(x+T*.94,y+T*.5);ctx.lineTo(x+T*.06,y+T*.8);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='#9cc4ff';ctx.lineWidth=1;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+T*.4,y+T*.4);ctx.lineTo(x+T*.4,y+T*.68);ctx.moveTo(x+T*.68,y+T*.34);ctx.lineTo(x+T*.68,y+T*.6);ctx.stroke();
+}
+function drawTown(){
+  // casa
+  let x=8*T,y=(SURF-1)*T;
+  rect(x+T*.12,y+T*.4,T*.76,T*.6,'#efe6d2');rect(x+T*.05,y+T*.22,T*.9,T*.2,'#c4553b');
+  rect(x+T*.4,y+T*.62,T*.2,T*.38,'#6b4423');rect(x+T*.2,y+T*.5,T*.14,T*.14,'#5aa9e6');
+  // fábrica
+  x=9*T;
+  rect(x+T*.08,y-T*.2,T*.84,T*1.2,'#6a6670');rect(x+T*.08,y-T*.2,T*.84,T*.15,'#55515b');
+  rect(x+T*.58,y-T*.9,T*.22,T*.7,'#4a4650');
+  rect(x+T*.2,y+T*.1,T*.16,T*.16,'#f2c14e');rect(x+T*.2,y+T*.45,T*.16,T*.16,'#f2c14e');
+}
+function draw(dt){
+  const W=COLS*T,H=ROWS*T;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const haze=Math.min(1,Math.max(0,(S.ppm-420)/90));
+  const g=ctx.createLinearGradient(0,0,0,SURF*T);
+  g.addColorStop(0,mix('#4aa8f0','#a8865a',haze));g.addColorStop(1,mix('#bfe6ff','#e2b878',haze));
+  ctx.fillStyle=g;ctx.fillRect(0,0,W,SURF*T);
+  // sol
+  ctx.fillStyle=mix('#fff3a8','#ffb347',haze);ctx.beginPath();ctx.arc(W*.78,T*1.1,T*(.55+haze*.15),0,7);ctx.fill();
+  // nubes
+  ctx.fillStyle='rgba(255,255,255,.85)';
+  for(let i=0;i<2;i++){const cx=((S.t*6*(i+1)+i*140)%(W+80))-40;rect(cx,T*(.6+i*.9),T*1.6,T*.4,'rgba(255,255,255,.8)');rect(cx+T*.3,T*(.35+i*.9),T*.9,T*.3,'rgba(255,255,255,.8)')}
+  const wc=waterCols();
+  for(let r=SURF;r<ROWS;r++)for(let c=0;c<COLS;c++){
+    const t=S.grid[r][c];
+    if(r===SURF&&c<wc){
+      rect(c*T,r*T,T,T,'#2f7fd1');
+      const w=Math.sin(S.t*2+c)*T*.05;rect(c*T,r*T+w+T*.1,T,T*.12,'#6db3f2');
+      rect(c*T+T*.2,r*T+T*.6,T*.3,T*.1,'#2468b0');
+    }else drawTile(c,r,t);
+  }
+  // marca de columnas plantables
+  if(S.tool!=='pick'&&!S.paused){
+    ctx.fillStyle='rgba(255,255,255,.14)';
+    for(let c=Math.max(LAND0,wc);c<=LAND1;c++){const o=S.obj[c];if(!o||o.dead)ctx.fillRect(c*T,(SURF-3)*T,T,3*T)}
+  }
+  drawTown();
+  for(let c=0;c<COLS;c++){const o=S.obj[c];if(!o)continue;if(o.k==='tree')drawTree(c,o);else drawSolar(c)}
+  // humo
+  if(!S.paused){
+    S.spawn+=dt*emis()*1.4;
+    while(S.spawn>=1){S.spawn--;S.smoke.push({x:9*T+T*.69,y:(SURF-1)*T-T*.9,l:0})}
+  }
+  S.smoke=S.smoke.filter(p=>p.l<3.2);
+  for(const p of S.smoke){if(!S.paused){p.l+=dt;p.y-=dt*T*.7;p.x+=dt*T*.15}
+    ctx.fillStyle='rgba(70,66,76,'+(0.7*(1-p.l/3.2)).toFixed(2)+')';const s=T*(.3+p.l*.25);ctx.fillRect(p.x-s/2,p.y-s/2,s,s)}
+}
+
+function resize(){
+  const w=$('wrap');
+  T=Math.max(16,Math.floor(Math.min((w.clientWidth-6)/COLS,(w.clientHeight-6)/ROWS)));
+  dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=COLS*T*dpr;cv.height=ROWS*T*dpr;cv.style.width=COLS*T+'px';cv.style.height=ROWS*T+'px';
+  ctx.imageSmoothingEnabled=false;
+}
+new ResizeObserver(resize).observe($('wrap'));
+window.addEventListener('resize',resize);
+
+let last=performance.now();
+function loop(now){
+  const dt=Math.min(.1,(now-last)/1000);last=now;
+  if(!S.paused){S.t+=dt;S.yt+=dt;if(S.yt>=YEAR_SEC){S.yt-=YEAR_SEC;yearTick()}else if(Math.floor(S.t*4)%1===0)$('prog').style.width=Math.min(100,((S.year-2025)+S.yt/YEAR_SEC)/(END_YEAR-2025)*100)+'%'}
+  draw(dt);
+  requestAnimationFrame(loop);
+}
+newGame();resize();refresh();intro();
+requestAnimationFrame(loop);
+})();
+</script>
