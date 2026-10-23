@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Silkscreen:wght@400;700&display=swap">
 <style>
-/* Layout: pantalla completa vertical de móvil. HUD arriba, mundo de bloques en canvas, barra de herramientas abajo. */
+/* Layout: pantalla completa vertical de móvil. HUD arriba, mapa tipo Zelda en canvas, cruceta y botón A abajo. */
 :root{
   --bg:#1f1b24;        /* noche de volcán */
   --panel:#2e2836;     /* roca oscura */
@@ -12,17 +12,16 @@
   --accent:#f2a93b;    /* sol de Almería */
   --good:#7bd88f;
   --bad:#ff7a63;
-  --sea:#3a8fe0;
   --display:'Silkscreen','Courier New',monospace;
   --body:'Atkinson Hyperlegible',system-ui,-apple-system,'Segoe UI',sans-serif;
   color-scheme:dark;
 }
 [hidden]{display:none!important}
-html,body{height:100%}
+html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15px;overflow:hidden;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
   touch-action:manipulation;-webkit-user-select:none;user-select:none}
-#app{height:100%;display:flex;flex-direction:column;gap:8px;padding-block:8px;max-width:560px;margin:0 auto}
+#app{box-sizing:border-box;height:100%;display:flex;flex-direction:column;gap:8px;padding-block:8px;max-width:560px;margin:0 auto}
 .hud{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .stat{background:var(--panel);border:2px solid var(--line);padding:5px 4px;text-align:center;min-width:0}
 .stat b{display:block;font-family:var(--display);font-size:15px;line-height:1.2;font-variant-numeric:tabular-nums}
@@ -31,20 +30,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15
 .stat.ok b{color:var(--good)}
 .bar{height:10px;background:var(--panel);border:2px solid var(--line);position:relative}
 .bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent)}
-.row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
-.coll{display:flex;gap:4px}
-.coll span{width:18px;height:18px;border:2px solid var(--line);background:var(--panel)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--text);min-height:34px}
+#hint{min-width:0;flex:1}
+.mini{font:inherit;font-size:13px;font-weight:700;color:var(--text);background:var(--panel);border:2px solid var(--line);padding:6px 10px;cursor:pointer;white-space:nowrap}
 #wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
 canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touch-action:none}
-.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.tool{font:inherit;color:var(--text);background:var(--panel);border:3px solid var(--line);padding:8px 4px;min-height:58px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-.tool .ic{font-size:22px;line-height:1}
-.tool .lb{font-family:var(--display);font-size:12px}
-.tool .cs{font-size:12px;color:var(--muted)}
-.tool.on{border-color:var(--accent);background:#3b3040}
-.tool.no{opacity:.45}
-.tool:focus-visible,.btn:focus-visible,.opt:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
-#toast{position:fixed;left:50%;bottom:calc(88px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 12px;font-weight:700;font-size:14px;max-width:calc(100% - 32px);text-align:center;opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
+.ctl{display:flex;justify-content:space-between;align-items:center;gap:12px;padding-bottom:2px}
+.dpad{display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(2,54px);gap:4px}
+.dpad button,.abtn{font-family:var(--display);color:var(--text);background:var(--panel);border:3px solid var(--line);cursor:pointer;touch-action:none;font-size:20px}
+.dpad button:active,.abtn:active{background:#3b3040;border-color:var(--accent)}
+.dpad .u{grid-column:2;grid-row:1}.dpad .l{grid-column:1;grid-row:2}.dpad .d{grid-column:2;grid-row:2}.dpad .r{grid-column:3;grid-row:2}
+.abtn{width:88px;height:88px;border-radius:50%;font-size:30px;background:#4a3a2a;border-color:var(--accent);color:var(--accent)}
+.dpad button:focus-visible,.abtn:focus-visible,.mini:focus-visible,.btn:focus-visible,.opt:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#toast{position:fixed;left:50%;top:calc(120px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 12px;font-weight:700;font-size:14px;max-width:calc(100% - 32px);text-align:center;opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
 #toast.show{opacity:1}
 #modal{position:fixed;inset:0;background:rgba(15,12,18,.82);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20;overflow-y:auto}
 #card{background:var(--panel);border:3px solid var(--accent);max-width:440px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow-y:auto}
@@ -58,36 +56,48 @@ canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touc
 .btn{background:var(--accent);color:#2a1d08;border-color:var(--accent);text-align:center;font-family:var(--display)}
 .opt.right{border-color:var(--good);background:#1f3a2a}
 .opt.wrong{border-color:var(--bad);background:#3f2420}
+.quests{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.quests li{display:flex;gap:10px;align-items:baseline;line-height:1.35}
+.quests .ck{font-family:var(--display);color:var(--muted);flex:none}
+.quests li.done .ck{color:var(--good)}
+.quests small{color:var(--muted);margin-left:4px;font-variant-numeric:tabular-nums}
 .stats-end{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .stats-end div{background:var(--bg);border:2px solid var(--line);padding:8px;font-size:13px;color:var(--muted)}
 .stats-end b{display:block;font-family:var(--display);font-size:18px;color:var(--text)}
+.rocks{display:flex;gap:6px}
+.rocks span{width:22px;height:22px;border:2px solid var(--line);background:var(--bg)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
 </style>
 
 <div id="app">
-  <div class="hud" id="hud">
+  <div class="hud">
     <div class="stat"><b id="sYear">2025</b><small>Año</small></div>
     <div class="stat" id="stCo2"><b id="sCo2">420</b><small>CO₂ ppm</small></div>
     <div class="stat" id="stTemp"><b id="sTemp">+1.1°</b><small>Temp.</small></div>
     <div class="stat" id="stSea"><b id="sSea">0</b><small>Mar cm</small></div>
-    <div class="stat"><b id="sSci">6</b><small>Ciencia</small></div>
+    <div class="stat"><b id="sSci">8</b><small>Ciencia</small></div>
   </div>
   <div class="bar" aria-label="Progreso hasta 2050"><i id="prog"></i></div>
-  <div class="row"><span id="hint">Toca un bloque con el pico para investigar.</span><span class="coll" id="coll" title="Rocas descubiertas"></span></div>
-  <div id="wrap"><canvas id="cv" aria-label="Mundo de bloques de Almería"></canvas></div>
-  <div class="tools" id="tools">
-    <button class="tool on" data-t="pick"><span class="ic">⛏️</span><span class="lb">PICO</span><span class="cs">gratis</span></button>
-    <button class="tool" data-t="tree"><span class="ic">🌳</span><span class="lb">ÁRBOL</span><span class="cs">3 🔬</span></button>
-    <button class="tool" data-t="solar"><span class="ic">☀️</span><span class="lb">PLACA</span><span class="cs">6 🔬</span></button>
+  <div class="row"><span id="hint"></span><button class="mini" id="bQuest">Misiones</button></div>
+  <div id="wrap"><canvas id="cv" aria-label="Mapa de Almería"></canvas></div>
+  <div class="ctl" id="ctlWorld">
+    <div class="dpad">
+      <button class="u" data-d="0,-1" aria-label="Arriba">▲</button>
+      <button class="l" data-d="-1,0" aria-label="Izquierda">◀</button>
+      <button class="d" data-d="0,1" aria-label="Abajo">▼</button>
+      <button class="r" data-d="1,0" aria-label="Derecha">▶</button>
+    </div>
+    <button class="abtn" id="bA" aria-label="Actuar">A</button>
   </div>
+  <div class="ctl" id="ctlCave" hidden><button class="btn" id="bExit" style="width:100%">Salir de la cueva</button></div>
 </div>
 <div id="toast"></div>
 <div id="modal" hidden><div id="card"></div></div>
 
 <script>
 (function(){
-const COLS=10, ROWS=15, SURF=5, LAND0=2, LAND1=7, YEAR_SEC=4, END_YEAR=2050;
-const COST={tree:3,solar:6};
+const COLS=10, ROWS=12, CAVE_ROWS=14, YEAR_SEC=8, END_YEAR=2050, LOSE_SEA=60;
+const COST={tree:4,solar:8,pos:5};
 const ROCKS={
  1:{n:'Suelo',kind:'Suelo',sci:1,c:'#8a5a32',a:'#6d4524',b:'#a4713f',
   fact:'El suelo nace cuando la lluvia, el viento y las raíces rompen la roca poco a poco. En Almería hay poco y se lo lleva la erosión cuando llueve de golpe.',
@@ -105,6 +115,41 @@ const ROCKS={
   fact:'El mármol de Macael nació cuando la caliza quedó enterrada y recibió mucha presión y calor, sin llegar a fundirse.',
   q:'¿Qué transforma la caliza en mármol?',o:['Presión y calor en el interior','Un río que la arrastra','El viento del desierto'],a_:0}
 };
+const CARDS={r1:ROCKS[1],r2:ROCKS[2],r3:ROCKS[3],r4:ROCKS[4],r5:ROCKS[5],
+ tree:{n:'Árboles',kind:'Naturaleza',c:'#2f8f3a',
+  fact:'Los árboles absorben CO₂ al hacer la fotosíntesis y guardan el carbono en la madera y en el suelo. En zonas áridas como Tabernas crecen despacio y necesitan agua.',
+  q:'¿Qué gas absorben los árboles?',o:['CO₂','Helio','Humo de coche'],a_:0},
+ solar:{n:'Energía solar',kind:'Energía limpia',c:'#2a63c9',
+  fact:'Una placa solar produce electricidad sin emitir CO₂. Almería es una de las provincias de España con más horas de sol al año.',
+  q:'¿Por qué Almería es buena para placas solares?',o:['Tiene muchísimas horas de sol','Llueve casi todos los días','Hace mucho frío'],a_:0},
+ pos:{n:'Posidonia',kind:'Carbono azul',c:'#2f9a5f',
+  fact:'La posidonia es una planta marina que forma praderas bajo el agua. Captura CO₂, da refugio a peces y frena la erosión de las playas. Cabo de Gata tiene praderas protegidas.',
+  q:'La posidonia es…',o:['Una planta marina','Un tipo de pez','Una roca volcánica'],a_:0}
+};
+/* Pantallas del mapa (2x2). # muro  ~ mar  , aguas someras  T parcela de árbol  S tejado  H casa  N profe  F fábrica
+   C cueva  R muestra de roca  c cactus  P pradera de posidonia  1 2 3 playa que se inunda al subir el mar */
+const MAPS=[[
+ ["##########","#c...T..c#","#..T...T.#","#.c.....c#","#...R....#","#.T....T..","#.........","#c...T..c#","#........#","#..c...c.#","#....T...#","####..####"],
+ ["##########","#.R..###.#","#..c.#C#.#","#....#.#.#","#........#",".........#",".........#","#...c....#","#.c.....c#","#....R...#","#........#","####..####"]
+],[
+ ["####..####","#........#","#.SS..SS.#","#........#","#..N.....#","#.........","#.........","#.H....F.#","#........#","#.c....c.#","#........#","##########"],
+ ["####..####","#...R....#","#.....R..#","#....321,~","#....321P~",".....321,~",".....321P~","#....321,~","#....321P~","#.....21,~","#.R...1P~~","####~~~~~~"]
+]];
+const THEME=[[
+ {g:'#d8b06a',ga:'#c49a54',gb:'#e8c78a',w:'#a0693c',wa:'#7d4f2b',wb:'#b98152'},
+ {g:'#e6dfc9',ga:'#cfd0cb',gb:'#f7f4ea',w:'#c3c9cf',wa:'#9ea6ae',wb:'#e3e8ec'}
+],[
+ {g:'#c8b690',ga:'#b09d78',gb:'#dccba6',w:'#8a7b6b',wa:'#6a5c4e',wb:'#a4947f'},
+ {g:'#ead7a0',ga:'#d6c186',gb:'#f6e8c0',w:'#6d6572',wa:'#4f4855',wb:'#9a6a66'}
+]];
+const SAMPLE=[[2,3],[0,4]];
+const NAMES=[['Desierto de Tabernas','Sorbas'],['Pueblo','Costa de Cabo de Gata']];
+const QUESTS=[
+ {id:'rocks',t:'Descubre las 5 rocas de Almería',g:5,n:()=>Object.keys(S.found).length},
+ {id:'solar',t:'Instala 3 placas solares en el pueblo',g:3,n:()=>count('solar')},
+ {id:'tree',t:'Ten 4 árboles vivos en Tabernas',g:4,n:()=>count('tree')},
+ {id:'pos',t:'Siembra 3 praderas de posidonia en la costa',g:3,n:()=>count('pos')}
+];
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
 let T=24, dpr=1, S;
@@ -112,223 +157,415 @@ let T=24, dpr=1, S;
 function hash(c,r,k){const x=Math.sin(c*127.1+r*311.7+k*74.7)*43758.5453;return x-Math.floor(x)}
 function lerp(a,b,t){return a+(b-a)*t}
 function mix(c1,c2,t){const p=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));const a=p(c1),b=p(c2);return 'rgb('+a.map((v,i)=>Math.round(lerp(v,b[i],t))).join(',')+')'}
+const rows=()=>S.mode==='cave'?CAVE_ROWS:ROWS;
 
-function newGame(){
-  const grid=[];
-  for(let r=0;r<ROWS;r++){grid[r]=[];for(let c=0;c<COLS;c++){
-    if(r<SURF)grid[r][c]=0;
-    else if(r===SURF)grid[r][c]=9;
-    else{let t=Math.min(5,Math.floor((r-6)/2)+1);if(r===14)t=5;
-      const j=hash(c,r,3);if(j<.12)t=Math.max(1,t-1);else if(j>.88)t=Math.min(5,t+1);grid[r][c]=t}
+function makeCave(){
+  const g=[];
+  for(let r=0;r<CAVE_ROWS;r++){g[r]=[];for(let c=0;c<COLS;c++){
+    if(r===0){g[r][c]=9;continue}
+    let t=Math.min(5,Math.floor((r-1)/3)+1);
+    const j=hash(c,r,3);if(j<.12)t=Math.max(1,t-1);else if(j>.88)t=Math.min(5,t+1);
+    g[r][c]=t;
   }}
-  S={year:2025,yt:0,t:0,ppm:420,sci:6,tool:'pick',found:{},grid,obj:Array(COLS).fill(null),smoke:[],paused:true,over:false,spawn:0};
-  S.obj[4]={k:'tree',dead:false,born:-9};
+  return g;
+}
+function newGame(){
+  S={year:2025,yt:0,t:0,ppm:420,sci:8,mode:'world',sx:0,sy:1,x:5,y:5,vx:5,vy:5,fx:0,fy:-1,
+     hold:null,path:[],after:null,spots:{},taken:{},found:{},seen:{},qdone:{},cave:makeCave(),
+     smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
+  S.spots['0,0,5,1']={k:'tree',dead:false,born:-9};
 }
 const temp=()=>Math.max(1,1.1+(S.ppm-420)*0.012);
-const waterCols=()=>Math.min(COLS,LAND0+Math.max(0,Math.floor((temp()-1.1)*5)));
-const nSolar=()=>S.obj.filter(o=>o&&o.k==='solar').length;
-const nTrees=()=>S.obj.filter(o=>o&&o.k==='tree'&&!o.dead).length;
-const emis=()=>Math.max(0.3,4-0.7*nSolar());
+const sea=()=>Math.max(0,Math.round((temp()-1.1)*60));
+const floodStep=()=>Math.min(3,Math.floor(sea()/20));
+function count(k){return Object.values(S.spots).filter(o=>o.k===k&&!o.dead).length}
+const emis=()=>Math.max(0.3,4-0.8*count('solar'));
 
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),1800)}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2000)}
 function modal(html,after){
-  S.paused=true;const m=$('modal');$('card').innerHTML=html;m.hidden=false;
-  m._after=after;
+  S.paused=true;S.hold=null;S.path=[];S.after=null;
+  $('card').innerHTML=html;$('modal').hidden=false;$('modal')._after=after;
 }
 function closeModal(){const m=$('modal');m.hidden=true;S.paused=false;const f=m._after;m._after=null;if(f)f()}
 $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
   if(a==='close')closeModal();
-  else if(a==='again'){newGame();$('modal').hidden=true;refresh();S.paused=false}
+  else if(a==='again'){newGame();$('modal').hidden=true;setMode('world');S.paused=false}
   else if(a==='opt')answer(b);
 });
 
 function intro(){
   modal(`<h2>Guardianes de Cabo de Gata</h2>
   <span class="tag">Misión 2025 → 2050</span>
-  <p>La fábrica del pueblo lanza CO₂ y el planeta se calienta. Si el mar sube demasiado, el pueblo se inunda.</p>
-  <p><b>⛏️ Pico:</b> rompe bloques bajo tierra, descubre rocas y gana 🔬 Ciencia.<br>
-  <b>🌳 Árbol</b> y <b>☀️ Placa solar:</b> gástate la Ciencia para bajar el CO₂. Toca una columna de tierra firme para colocarlos.</p>
-  <p>Objetivo: llegar a 2050 con menos de <b>+1.5 °C</b> y el pueblo seco.</p>
+  <p>La fábrica del pueblo lanza CO₂ y el planeta se calienta. Si el mar sube 60 cm, el pueblo se inunda. Tienes 25 años.</p>
+  <p><b>Muévete</b> con la cruceta o tocando el mapa. Pulsa <b>A</b> para actuar: hablar, recoger rocas, plantar o instalar placas.</p>
+  <p>La <b>Ciencia 🔬</b> se gana excavando en las cuevas de Sorbas y recogiendo rocas. Gástala en placas, árboles y posidonia.</p>
+  <p>Objetivo: llegar a 2050 con menos de <b>+1.5 °C</b>. Habla primero con la profe.</p>
   <button class="btn" data-act="close">¡Empezar!</button>`);
 }
-
-function discover(t){
-  const R=ROCKS[t];
+function showCard(key){
+  const R=CARDS[key];
   modal(`<div class="head"><div class="sw" style="background:${R.c}"></div><div><h2>${R.n}</h2></div></div>
   <span class="tag">${R.kind}</span>
   <p>${R.fact}</p>
   <p><b>${R.q}</b></p>
-  <div class="opts">${R.o.map((o,i)=>`<button class="opt" data-act="opt" data-i="${i}" data-t="${t}">${o}</button>`).join('')}</div>
+  <div class="opts">${R.o.map((o,i)=>`<button class="opt" data-act="opt" data-i="${i}" data-k="${key}">${o}</button>`).join('')}</div>
   <div id="fb"></div>`);
 }
 function answer(b){
-  const R=ROCKS[b.dataset.t], i=+b.dataset.i, ok=i===R.a_;
-  document.querySelectorAll('.opt').forEach((o,j)=>{o.disabled=true;if(j===R.a_)o.classList.add('right');});
+  const key=b.dataset.k,R=CARDS[key],i=+b.dataset.i,ok=i===R.a_,rw=key[0]==='r'&&key.length===2?5:3;
+  document.querySelectorAll('.opt').forEach((o,j)=>{o.disabled=true;if(j===R.a_)o.classList.add('right')});
   if(!ok)b.classList.add('wrong');
-  if(ok)S.sci+=5;
-  $('fb').innerHTML=`<p>${ok?'¡Correcto! +5 🔬':'Casi. La respuesta correcta es: <b>'+R.o[R.a_]+'</b>.'}</p><button class="btn" data-act="close" style="margin-top:10px;width:100%">Seguir</button>`;
+  if(ok)S.sci+=rw;
+  $('fb').innerHTML=`<p>${ok?'¡Correcto! +'+rw+' 🔬':'Casi. La respuesta correcta es: <b>'+R.o[R.a_]+'</b>.'}</p><button class="btn" data-act="close" style="margin-top:10px;width:100%">Seguir</button>`;
   refresh();
 }
+function foundRock(t){
+  if(!S.found[t]){S.found[t]=true;checkQuests();showCard('r'+t);return true}
+  return false;
+}
+function checkQuests(){
+  QUESTS.forEach(q=>{if(!S.qdone[q.id]&&q.n()>=q.g){S.qdone[q.id]=true;S.sci+=4;setTimeout(()=>toast('Misión cumplida: '+q.t+' (+4 🔬)'),1200)}});
+}
+function questModal(){
+  const done=QUESTS.every(q=>S.qdone[q.id]);
+  modal(`<h2>Misiones</h2>
+  <ul class="quests">${QUESTS.map(q=>`<li class="${S.qdone[q.id]?'done':''}"><span class="ck">${S.qdone[q.id]?'[x]':'[ ]'}</span><span>${q.t}<small>${Math.min(q.n(),q.g)}/${q.g}</small></span></li>`).join('')}</ul>
+  <p>Cada misión cumplida da +4 🔬.</p>
+  <p><b>Objetivo final:</b> llegar a 2050 por debajo de +1.5 °C. Ahora estás en +${temp().toFixed(1)} °C.</p>
+  <div class="rocks">${[1,2,3,4,5].map(t=>`<span title="${S.found[t]?ROCKS[t].n:'?'}" style="${S.found[t]?'background:'+ROCKS[t].c:''}"></span>`).join('')}</div>
+  <button class="btn" data-act="close">${done?'Genial':'Seguir jugando'}</button>`);
+}
+$('bQuest').addEventListener('click',()=>{if(!S.paused)questModal()});
 
 function refresh(){
   $('sYear').textContent=S.year;
   $('sCo2').textContent=Math.round(S.ppm);
   const tp=temp();$('sTemp').textContent='+'+tp.toFixed(1)+'°';
-  const wc=waterCols();$('sSea').textContent=(wc-LAND0)*25;
+  $('sSea').textContent=sea();
   $('sSci').textContent=S.sci;
   $('stTemp').className='stat'+(tp>1.5?' warn':' ok');
   $('stCo2').className='stat'+(S.ppm>450?' warn':'');
-  $('stSea').className='stat'+(wc>=6?' warn':'');
+  $('stSea').className='stat'+(sea()>=40?' warn':'');
   $('prog').style.width=Math.min(100,((S.year-2025)+S.yt/YEAR_SEC)/(END_YEAR-2025)*100)+'%';
-  document.querySelectorAll('.tool').forEach(b=>{const t=b.dataset.t;b.classList.toggle('on',S.tool===t);b.classList.toggle('no',COST[t]>S.sci)});
-  $('coll').innerHTML=[1,2,3,4,5].map(t=>`<span style="${S.found[t]?'background:'+ROCKS[t].c:''}" title="${S.found[t]?ROCKS[t].n:'?'}"></span>`).join('');
-  $('hint').textContent=S.tool==='pick'?'Toca un bloque con el pico para investigar.':'Toca una columna de tierra firme (verde).';
+}
+function setHint(){
+  let h;
+  if(S.mode==='cave')h='Toca los bloques para excavar. Cada roca da 🔬.';
+  else{
+    const a=pickAction();
+    h=a?hintFor(a):NAMES[S.sy][S.sx]+'. Toca el mapa o usa la cruceta.';
+  }
+  if(h!==S.lastHint){S.lastHint=h;$('hint').textContent=h}
+}
+function hintFor(a){
+  return {tree:'A: plantar árbol ('+COST.tree+' 🔬)',pos:'A: sembrar posidonia ('+COST.pos+' 🔬)',solar:'A: instalar placa solar ('+COST.solar+' 🔬)',
+    talk:'A: hablar con la profe',fab:'A: examinar la fábrica',sample:'A: recoger muestra de roca'}[a.a];
+}
+function setMode(m){
+  S.mode=m;$('ctlWorld').hidden=m!=='world';$('ctlCave').hidden=m!=='cave';S.lastHint='';resize();refresh();
 }
 
-document.getElementById('tools').addEventListener('click',e=>{
-  const b=e.target.closest('.tool');if(!b||S.paused)return;S.tool=b.dataset.t;refresh();
-});
+/* ---------- mapa ---------- */
+const sk=(c,r)=>S.sx+','+S.sy+','+c+','+r;
+function ch(c,r){const x=MAPS[S.sy][S.sx][r][c];return x==='R'&&S.taken[sk(c,r)]?'.':x}
+function solid(c,r){
+  const x=ch(c,r);
+  if('#~NFSRHc'.includes(x))return true;
+  if(x==='T'){const o=S.spots[sk(c,r)];return !!(o&&!o.dead)}
+  return false;
+}
+function actionAt(c,r){
+  if(c<0||r<0||c>=COLS||r>=ROWS)return null;
+  const x=ch(c,r),o=S.spots[sk(c,r)];
+  if(x==='T'&&(!o||o.dead))return{a:'tree',c,r};
+  if(x==='P'&&(!o||o.dead))return{a:'pos',c,r};
+  if(x==='S'&&!o)return{a:'solar',c,r};
+  if(x==='N')return{a:'talk',c,r};
+  if(x==='F')return{a:'fab',c,r};
+  if(x==='R')return{a:'sample',c,r};
+  return null;
+}
+function pickAction(){
+  for(const [dx,dy] of [[0,0],[S.fx,S.fy],[0,-1],[0,1],[-1,0],[1,0]]){
+    const a=actionAt(S.x+dx,S.y+dy);if(a)return a;
+  }
+  return null;
+}
+function interact(a){
+  if(a.a==='talk')return npc();
+  if(a.a==='fab')return modal(`<h2>La fábrica</h2><span class="tag">Fuente de CO₂</span><p>Quema combustibles fósiles y ahora emite unos <b>${emis().toFixed(1)} ppm</b> de CO₂ al año. Cada placa solar del pueblo reduce sus emisiones en 0,8 ppm al año.</p><button class="btn" data-act="close">Vale</button>`);
+  if(a.a==='sample'){
+    S.taken[sk(a.c,a.r)]=true;S.sci+=3;const t=SAMPLE[S.sy][S.sx];
+    toast('+3 🔬 Muestra de '+ROCKS[t].n.toLowerCase());
+    refresh();foundRock(t);checkQuests();refresh();return;
+  }
+  const k=a.a;
+  if(S.sci<COST[k]){toast('Te faltan '+(COST[k]-S.sci)+' 🔬. Excava en las cuevas de Sorbas.');return}
+  S.sci-=COST[k];S.spots[sk(a.c,a.r)]={k,dead:false,born:S.t};
+  toast(k==='tree'?'Árbol plantado: absorbe CO₂':k==='solar'?'Placa solar: la fábrica emite menos':'Posidonia sembrada: absorbe CO₂');
+  checkQuests();refresh();
+  if(!S.seen[k]){S.seen[k]=true;showCard(k)}
+}
+function npc(){
+  S.seen.talked=true;
+  const q=QUESTS.find(q=>!S.qdone[q.id]);
+  const tips={rocks:'Para investigar rocas ve a las cuevas de Sorbas (arriba a la derecha) o busca muestras por el mapa.',
+    solar:'Las placas se instalan en los tejados del pueblo. Cuestan '+COST.solar+' 🔬.',
+    tree:'En Tabernas (arriba a la izquierda) hay parcelas de tierra para plantar árboles.',
+    pos:'En la costa de Cabo de Gata (abajo a la derecha) hay praderas de posidonia en aguas poco profundas.'};
+  const tp=temp();
+  const state=tp>1.5?'Vamos tarde: ya estamos en +'+tp.toFixed(1)+' °C. Hay que bajar el CO₂.':'Vamos bien: estamos en +'+tp.toFixed(1)+' °C. Hay que mantenerlo.';
+  modal(`<h2>La profe</h2><span class="tag">${q?'Siguiente misión':'Misiones completadas'}</span>
+  <p>${q?'<b>'+q.t+'.</b> '+tips[q.id]:'¡Has completado todas las misiones! Ahora cuida el clima hasta 2050.'}</p>
+  <p>${state}</p><button class="btn" data-act="close">Vale</button>`);
+}
 
+/* ---------- movimiento ---------- */
+function tryMove(dx,dy){
+  S.fx=dx;S.fy=dy;
+  const nx=S.x+dx,ny=S.y+dy;
+  if(nx<0||ny<0||nx>=COLS||ny>=ROWS){
+    const nsx=S.sx+(nx>=COLS?1:nx<0?-1:0),nsy=S.sy+(ny>=ROWS?1:ny<0?-1:0);
+    if(!MAPS[nsy]||!MAPS[nsy][nsx])return false;
+    const c=(nx+COLS)%COLS,r=(ny+ROWS)%ROWS,keep=[S.sx,S.sy];
+    S.sx=nsx;S.sy=nsy;
+    if(solid(c,r)){S.sx=keep[0];S.sy=keep[1];return false}
+    S.x=c;S.y=r;S.vx=c;S.vy=r;S.smoke=[];toast(NAMES[S.sy][S.sx]);
+    return true;
+  }
+  if(solid(nx,ny))return false;
+  S.x=nx;S.y=ny;
+  if(ch(nx,ny)==='C')S.enter=true;
+  return true;
+}
+function bfs(goalFn){
+  const q=[[S.x,S.y]],prev={},key=(c,r)=>c+','+r;prev[key(S.x,S.y)]=null;
+  while(q.length){
+    const [c,r]=q.shift();
+    if(goalFn(c,r)){
+      const path=[];let k=key(c,r);
+      while(prev[k]){path.unshift(prev[k].d);k=prev[k].k}
+      return path;
+    }
+    for(const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){
+      const nx=c+dx,ny=r+dy;if(nx<0||ny<0||nx>=COLS||ny>=ROWS||solid(nx,ny)||prev[key(nx,ny)]!==undefined)continue;
+      prev[key(nx,ny)]={k:key(c,r),d:[dx,dy]};q.push([nx,ny]);
+    }
+  }
+  return null;
+}
+function tapWorld(c,r){
+  S.hold=null;S.path=[];S.after=null;
+  if(solid(c,r)){
+    const a=actionAt(c,r);
+    const adj=(x,y)=>Math.abs(x-c)+Math.abs(y-r)===1;
+    if(adj(S.x,S.y)){S.fx=c-S.x;S.fy=r-S.y;if(a)interact(a);return}
+    const p=bfs(adj);
+    if(p){S.path=p;if(a)S.after={c,r,a}}
+    else toast('No hay camino hasta ahí.');
+  }else{
+    const p=bfs((x,y)=>x===c&&y===r),a=actionAt(c,r);
+    if(p){S.path=p;if(a)S.after={c,r,a}}else toast('No hay camino hasta ahí.');
+  }
+}
+function actionPress(){
+  if(S.paused||S.over||S.mode!=='world')return;
+  const a=pickAction();
+  if(a)interact(a);else toast('Aquí no hay nada que hacer.');
+}
+
+/* ---------- cueva ---------- */
+function enterCave(){
+  S.enter=false;S.hold=null;S.path=[];setMode('cave');
+  toast('Cuevas de Sorbas');
+}
+function leaveCave(){
+  S.sx=1;S.sy=0;S.x=6;S.y=3;S.vx=6;S.vy=3;S.fx=0;S.fy=1;setMode('world');
+}
+$('bExit').addEventListener('click',()=>{if(!S.paused)leaveCave()});
+
+/* ---------- entrada ---------- */
 cv.addEventListener('pointerdown',e=>{
   if(S.paused||S.over)return;
-  const rc=cv.getBoundingClientRect();
-  const c=Math.floor((e.clientX-rc.left)/rc.width*COLS), r=Math.floor((e.clientY-rc.top)/rc.height*ROWS);
-  if(c<0||c>=COLS||r<0||r>=ROWS)return;
-  const wc=waterCols();
-  if(S.tool==='pick'){
-    const t=S.grid[r][c];
-    if(r<=SURF||t===0||t===9){toast(r<=SURF?'Cava más abajo, bajo la hierba.':'Ya está excavado.');return}
-    S.grid[r][c]=0;S.sci+=ROCKS[t].sci;
-    if(!S.found[t]){S.found[t]=true;refresh();discover(t)}else{toast('+'+ROCKS[t].sci+' 🔬 '+ROCKS[t].n);refresh()}
-  }else{
-    const k=S.tool;
-    if(c<LAND0||c>LAND1||c<wc){toast(c<wc?'Esa zona ya está bajo el mar.':'Planta en la zona de tierra firme.');return}
-    const o=S.obj[c];if(o&&!o.dead){toast('Ya hay algo ahí.');return}
-    if(S.sci<COST[k]){toast('Te faltan '+(COST[k]-S.sci)+' 🔬. Excava más.');return}
-    S.sci-=COST[k];S.obj[c]={k,dead:false,born:S.t};
-    toast(k==='tree'?'🌳 Árbol plantado: absorbe CO₂':'☀️ Placa solar: menos humo de la fábrica');refresh();
-  }
+  const rc=cv.getBoundingClientRect(),R=rows();
+  const c=Math.floor((e.clientX-rc.left)/rc.width*COLS),r=Math.floor((e.clientY-rc.top)/rc.height*R);
+  if(c<0||c>=COLS||r<0||r>=R)return;
+  if(S.mode==='world'){tapWorld(c,r);return}
+  const t=S.cave[r][c];
+  if(r===0||t===0){toast(r===0?'Excava hacia abajo.':'Ya está excavado.');return}
+  S.cave[r][c]=0;S.sci+=ROCKS[t].sci;
+  if(S.found[t])toast('+'+ROCKS[t].sci+' 🔬 '+ROCKS[t].n);
+  refresh();foundRock(t);checkQuests();refresh();
 });
+document.querySelectorAll('.dpad button').forEach(b=>{
+  const d=b.dataset.d.split(',').map(Number);
+  b.addEventListener('pointerdown',e=>{e.preventDefault();if(S.paused)return;S.path=[];S.after=null;S.hold=d});
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>b.addEventListener(ev,()=>{if(S.hold&&S.hold[0]===d[0]&&S.hold[1]===d[1])S.hold=null}));
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+});
+$('bA').addEventListener('pointerdown',e=>{e.preventDefault();actionPress()});
+const KEYS={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]};
+window.addEventListener('keydown',e=>{
+  if(KEYS[e.key]){e.preventDefault();if(!S.paused){S.path=[];S.after=null;S.hold=KEYS[e.key]}}
+  else if(e.key===' '||e.key==='Enter'||e.key==='e'){if(!$('modal').hidden)return;e.preventDefault();actionPress()}
+});
+window.addEventListener('keyup',e=>{const d=KEYS[e.key];if(d&&S.hold&&S.hold[0]===d[0]&&S.hold[1]===d[1])S.hold=null});
 
+/* ---------- clima ---------- */
 function yearTick(){
   S.year++;S.sci+=1;
-  const tr=nTrees();
-  S.ppm=Math.max(380,S.ppm+emis()-0.35*tr);
-  if(temp()>1.8&&tr>0&&Math.random()<0.35){
-    const alive=S.obj.map((o,i)=>o&&o.k==='tree'&&!o.dead?i:-1).filter(i=>i>=0);
-    S.obj[alive[Math.floor(Math.random()*alive.length)]].dead=true;toast('Sequía: se ha secado un árbol');
+  const tr=count('tree'),ps=count('pos');
+  S.ppm=Math.max(380,S.ppm+emis()-0.4*tr-0.5*ps);
+  const tp=temp();
+  if(tp>1.8&&tr>0&&Math.random()<0.35){
+    const ks=Object.keys(S.spots).filter(k=>S.spots[k].k==='tree'&&!S.spots[k].dead);
+    S.spots[ks[Math.floor(Math.random()*ks.length)]].dead=true;toast('Sequía: se ha secado un árbol en Tabernas');
+  }else if(tp>1.9&&ps>0&&Math.random()<0.3){
+    const ks=Object.keys(S.spots).filter(k=>S.spots[k].k==='pos'&&!S.spots[k].dead);
+    S.spots[ks[Math.floor(Math.random()*ks.length)]].dead=true;toast('Ola de calor marina: se ha muerto posidonia');
   }
-  const wc=waterCols();
-  for(let c=0;c<wc&&c<COLS;c++)if(S.obj[c]){S.obj[c]=null;toast('El mar se ha tragado una zona de cultivo')}
+  const f=floodStep();
+  if(f>S.lastFlood){S.lastFlood=f;toast('El mar sube: la playa se estrecha')}
   refresh();
-  if(wc>=8){end(false,'sea')}
-  else if(S.year>=END_YEAR){end(temp()<=1.5,'time')}
+  if(sea()>=LOSE_SEA)end(false,'sea');
+  else if(S.year>=END_YEAR)end(temp()<=1.5,'time');
 }
 function end(win,why){
-  S.over=true;S.paused=true;
-  const tp=temp(),wc=waterCols();
+  S.over=true;S.paused=true;S.hold=null;S.path=[];
+  const tp=temp();
   const title=win?'¡Lo conseguiste!':(why==='sea'?'El mar llegó al pueblo':'Demasiado calor');
-  const msg=win?'Llegaste a 2050 con el clima bajo control. Menos humo y más árboles frenaron el calentamiento.'
-    :(why==='sea'?'Con tanto calor el nivel del mar subió y cubrió las casas. Hace falta reducir el CO₂ antes.':'El pueblo sigue en pie, pero la temperatura pasó de +1.5 °C. Prueba con más placas solares y árboles desde el principio.');
+  const msg=win?'Llegaste a 2050 con el clima bajo control. Menos humo, más árboles y praderas de posidonia frenaron el calentamiento.'
+    :(why==='sea'?'Con tanto calor el nivel del mar subió 60 cm y cubrió las casas. Hay que reducir el CO₂ antes.':'El pueblo sigue en pie, pero la temperatura superó +1.5 °C. Prueba a instalar placas solares y plantar desde el principio.');
   setTimeout(()=>modal(`<h2>${title}</h2><p>${msg}</p>
   <div class="stats-end"><div><b>${S.year}</b>año</div><div><b>${Math.round(S.ppm)} ppm</b>CO₂</div>
-  <div><b>+${tp.toFixed(1)} °C</b>temperatura</div><div><b>${Object.keys(S.found).length}/5</b>rocas descubiertas</div></div>
-  <p><b>Para comentar en clase:</b> ¿qué pasó con la costa de Almería en tu partida y qué decisión habría cambiado el resultado?</p>
-  <button class="btn" data-act="again">Jugar otra vez</button>`),500);
+  <div><b>+${tp.toFixed(1)} °C</b>temperatura</div><div><b>${Object.keys(S.found).length}/5</b>rocas descubiertas</div>
+  <div><b>${count('solar')}</b>placas solares</div><div><b>${count('tree')+count('pos')}</b>árboles y posidonia vivos</div></div>
+  <p><b>Para comentar en clase:</b> ¿qué cambió en la costa durante tu partida y qué decisión habría cambiado el resultado?</p>
+  <button class="btn" data-act="again">Jugar otra vez</button>`),400);
 }
 
 /* ---------- dibujo ---------- */
 function rect(x,y,w,h,col){ctx.fillStyle=col;ctx.fillRect(Math.round(x),Math.round(y),Math.round(w),Math.round(h))}
-function drawTile(c,r,t){
+function speck(x,y,c,r,a,b){for(let i=0;i<4;i++){const s=T*(.1+hash(c,r,i)*.1);rect(x+hash(c,r,i+9)*(T-s),y+hash(c,r,i+19)*(T-s),s,s,i%2?a:b)}}
+function water(X,Y,c,r,deep){
+  rect(X,Y,T,T,deep?'#2468b0':'#4fa3e8');
+  const w=Math.sin(S.t*2+c+r)*T*.04;
+  rect(X+T*.15,Y+T*.35+w,T*.4,T*.07,deep?'#3d86d0':'#8ac6f5');
+  rect(X+T*.5,Y+T*.7-w,T*.3,T*.07,deep?'#3d86d0':'#8ac6f5');
+}
+function house(X,Y,roof){rect(X+T*.05,Y+T*.35,T*.9,T*.65,'#efe6d2');rect(X,Y+T*.1,T,T*.3,roof);rect(X+T*.4,Y+T*.62,T*.2,T*.38,'#6b4423');rect(X+T*.12,Y+T*.5,T*.16,T*.16,'#5aa9e6')}
+function solarRoof(X,Y){
+  rect(X+T*.12,Y+T*.13,T*.76,T*.22,'#2a63c9');
+  ctx.strokeStyle='#9cc4ff';ctx.lineWidth=1;ctx.beginPath();
+  for(let i=1;i<4;i++){ctx.moveTo(X+T*(.12+.19*i),Y+T*.13);ctx.lineTo(X+T*(.12+.19*i),Y+T*.35)}
+  ctx.stroke();
+}
+function tileW(c,r,x,th,fl){
+  const X=c*T,Y=r*T;
+  if(x==='#'){rect(X,Y,T,T,th.w);speck(X,Y,c,r,th.wa,th.wb);return}
+  if(x==='~'){water(X,Y,c,r,true);return}
+  if(x===','||x==='P'){water(X,Y,c,r,false);return}
+  if((x==='1'||x==='2'||x==='3')&&+x<=fl){water(X,Y,c,r,false);return}
+  rect(X,Y,T,T,th.g);speck(X,Y,c,r,th.ga,th.gb);
+  if(x==='1'||x==='2'||x==='3')rect(X,Y,T,T,'rgba(255,255,255,.12)');
+  if(x==='C'){
+    rect(X,Y,T,T,th.w);speck(X,Y,c,r,th.wa,th.wb);
+    rect(X+T*.2,Y+T*.25,T*.6,T*.75,'#1a1520');rect(X+T*.28,Y+T*.15,T*.44,T*.15,'#1a1520');
+  }
+  if(x==='S'||x==='H'){house(X,Y,x==='S'?'#c4553b':'#3d7ea6');if(x==='S'&&S.spots[sk(c,r)])solarRoof(X,Y)}
+  if(x==='R'){
+    const t=SAMPLE[S.sy][S.sx],R=ROCKS[t];
+    rect(X+T*.2,Y+T*.35,T*.6,T*.45,R.c);rect(X+T*.3,Y+T*.25,T*.35,T*.2,R.c);rect(X+T*.5,Y+T*.55,T*.2,T*.15,R.a);
+    if(Math.floor(S.t*2)%2===0)rect(X+T*.7,Y+T*.2,T*.1,T*.1,'#fff');
+  }
+}
+function objW(c,r,x){
+  const X=c*T,Y=r*T,o=S.spots[sk(c,r)];
+  if(x==='T'){
+    if(!o||o.dead){
+      rect(X+T*.15,Y+T*.25,T*.7,T*.55,'rgba(90,55,25,.55)');
+      if(!o)rect(X+T*.45,Y+T*.4,T*.1,T*.2,'#6fbf5a');
+      else{rect(X+T*.46,Y+T*.35,T*.08,T*.45,'#5a4630');rect(X+T*.3,Y+T*.4,T*.4,T*.1,'#5a4630')}
+    }else{
+      const g=Math.min(1,(S.t-o.born)/1.5);
+      rect(X+T*.42,Y+T*(1-.55*g),T*.16,T*.55*g,'#6b4423');
+      const lw=T*.9*g,lh=T*.9*g,lx=X+T*.5-lw/2,ly=Y+T*(1-.55*g)-lh*.7;
+      rect(lx,ly,lw,lh,'#2f8f3a');
+      for(let i=0;i<5;i++)rect(lx+hash(c,r,50+i)*lw*.8,ly+hash(c,r,60+i)*lh*.8,lw*.2,lh*.2,i%2?'#237a2f':'#4cb04f');
+    }
+  }
+  if(x==='P'){
+    if(!o)for(let i=0;i<3;i++)rect(X+T*(.25+i*.22),Y+T*.55,T*.08,T*.12,'rgba(150,230,170,.55)');
+    else{
+      const g=Math.min(1,(S.t-o.born)/1.5);
+      for(let i=0;i<5;i++){const h=T*(.3+hash(c,r,70+i)*.35)*g;rect(X+T*(.12+i*.17),Y+T*.9-h,T*.1,h,o.dead?'#8a7a46':'#2f9a5f')}
+    }
+  }
+  if(x==='c'){rect(X+T*.4,Y+T*.25,T*.2,T*.65,'#3c8f4a');rect(X+T*.22,Y+T*.4,T*.2,T*.12,'#3c8f4a');rect(X+T*.22,Y+T*.3,T*.1,T*.2,'#3c8f4a');rect(X+T*.58,Y+T*.5,T*.2,T*.12,'#3c8f4a');rect(X+T*.68,Y+T*.38,T*.1,T*.2,'#3c8f4a')}
+  if(x==='N'){
+    const b=Math.sin(S.t*3)*T*.03;
+    rect(X+T*.25,Y+T*.4+b,T*.5,T*.5,'#f4f4f4');rect(X+T*.3,Y+T*.15+b,T*.4,T*.3,'#e0b48a');rect(X+T*.28,Y+T*.1+b,T*.44,T*.12,'#5a3a22');
+    rect(X+T*.34,Y+T*.28+b,T*.12,T*.08,'#222');rect(X+T*.54,Y+T*.28+b,T*.12,T*.08,'#222');
+    if(!S.qdone.rocks&&!S.seen.talked)rect(X+T*.8,Y-T*.05+b,T*.12,T*.3,'#f2a93b');
+  }
+  if(x==='F'){
+    rect(X+T*.03,Y+T*.2,T*.94,T*.8,'#6a6670');rect(X+T*.03,Y+T*.2,T*.94,T*.12,'#55515b');
+    rect(X+T*.62,Y-T*.55,T*.24,T*.8,'#4a4650');
+    rect(X+T*.15,Y+T*.4,T*.16,T*.16,'#f2c14e');rect(X+T*.4,Y+T*.4,T*.16,T*.16,'#f2c14e');
+  }
+}
+function drawPlayer(){
+  const X=S.vx*T,Y=S.vy*T,step=(Math.abs(S.vx-S.x)+Math.abs(S.vy-S.y))>0.05&&Math.floor(S.t*10)%2?T*.04:0;
+  rect(X+T*.28,Y+T*.46,T*.44,T*.4+step,'#3b6fd6');
+  rect(X+T*.3,Y+T*.14,T*.4,T*.34,'#e0b48a');rect(X+T*.28,Y+T*.08,T*.44,T*.14,'#6b3f1c');
+  if(S.fy>=0){rect(X+T*.36,Y+T*.3,T*.08,T*.08,'#222');rect(X+T*.56,Y+T*.3,T*.08,T*.08,'#222')}
+  rect(X+T*.3,Y+T*.84,T*.14,T*.1,'#3a2a1a');rect(X+T*.56,Y+T*.84,T*.14,T*.1,'#3a2a1a');
+}
+function drawWorld(dt){
+  const th=THEME[S.sy][S.sx],fl=floodStep();
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)tileW(c,r,MAPS[S.sy][S.sx][r][c]==='R'&&S.taken[sk(c,r)]?'.':MAPS[S.sy][S.sx][r][c],th,fl);
+  if(S.sx===0&&S.sy===1){
+    const s=sea();
+    if(s>=20)for(let c=0;c<COLS;c++)rect(c*T,(ROWS-1)*T+T*.2,T,T*.8,'rgba(79,163,232,.85)');
+    if(s>=40)for(let c=0;c<COLS;c++)rect(c*T,(ROWS-2)*T+T*.45,T,T*.55,'rgba(79,163,232,.85)');
+  }
+  const pr=Math.round(S.vy);
+  for(let r=0;r<ROWS;r++){
+    for(let c=0;c<COLS;c++)objW(c,r,MAPS[S.sy][S.sx][r][c]);
+    if(r===pr)drawPlayer();
+  }
+  if(S.sx===0&&S.sy===1){
+    if(!S.paused){S.spawn+=dt*emis()*1.4;while(S.spawn>=1){S.spawn--;S.smoke.push({x:7*T+T*.74,y:7*T-T*.5,l:0})}}
+    S.smoke=S.smoke.filter(p=>p.l<3.2);
+    for(const p of S.smoke){if(!S.paused){p.l+=dt;p.y-=dt*T*.7;p.x+=dt*T*.15}
+      ctx.fillStyle='rgba(70,66,76,'+(0.7*(1-p.l/3.2)).toFixed(2)+')';const s=T*(.3+p.l*.25);ctx.fillRect(p.x-s/2,p.y-s/2,s,s)}
+  }
+  const haze=Math.min(1,Math.max(0,(S.ppm-420)/90));
+  if(haze>0){ctx.fillStyle='rgba(214,140,50,'+(haze*.24).toFixed(3)+')';ctx.fillRect(0,0,COLS*T,ROWS*T)}
+}
+function drawCaveTile(c,r,t){
   const x=c*T,y=r*T;
   if(t===0){rect(x,y,T,T,'#2a2230');rect(x+T*.15,y+T*.2,T*.2,T*.15,'#332a3b');return}
   const R=ROCKS[t===9?1:t];
   rect(x,y,T,T,R.c);
-  for(let i=0;i<5;i++){
-    const s=T*(.14+hash(c,r,i)*.1);
-    rect(x+hash(c,r,i+9)*(T-s),y+hash(c,r,i+19)*(T-s),s,s,i%2?R.a:R.b);
-  }
-  if(t===5){ctx.strokeStyle=R.a;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x+T*.1,y+T*.8);ctx.lineTo(x+T*.9,y+T*.2);ctx.stroke()}
+  for(let i=0;i<5;i++){const s=T*(.14+hash(c,r,i)*.1);rect(x+hash(c,r,i+9)*(T-s),y+hash(c,r,i+19)*(T-s),s,s,i%2?R.a:R.b)}
   ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=1;ctx.strokeRect(x+.5,y+.5,T-1,T-1);
-  if(t===9){
-    const hot=temp()>1.6;
-    rect(x,y,T,T*.32,hot?'#e0c27a':'#58b84a');
-    for(let i=0;i<3;i++)rect(x+hash(c,r,i+30)*T*.8,y+(i%2)*T*.1,T*.15,T*.12,hot?'#c9a85c':'#3f9a35');
-  }
+  if(t===9){rect(x,y,T,T*.32,'#58b84a');for(let i=0;i<3;i++)rect(x+hash(c,r,i+30)*T*.8,y+(i%2)*T*.1,T*.15,T*.12,'#3f9a35')}
 }
-function drawTree(c,o){
-  const g=Math.min(1,(S.t-o.born)/1.5);
-  const bx=c*T, by=(SURF-1)*T;
-  rect(bx+T*.4,by+T*(1-.65*g),T*.2,T*.65*g,o.dead?'#5a4630':'#6b4423');
-  const lh=T*.95*g, lw=T*.8*g;
-  const lx=bx+T*.5-lw/2, ly=by+T*(1-.65*g)-lh*.75;
-  const col=o.dead?'#8a7a46':'#2f8f3a', col2=o.dead?'#6f6236':'#237a2f', col3=o.dead?'#a4935a':'#4cb04f';
-  rect(lx,ly,lw,lh,col);
-  for(let i=0;i<5;i++)rect(lx+hash(c,i,50)*lw*.8,ly+hash(c,i,51)*lh*.8,lw*.2,lh*.2,i%2?col2:col3);
-}
-function drawSolar(c){
-  const x=c*T,y=(SURF-1)*T;
-  rect(x+T*.46,y+T*.55,T*.08,T*.45,'#8d8d99');
-  ctx.fillStyle='#2a63c9';ctx.beginPath();
-  ctx.moveTo(x+T*.06,y+T*.58);ctx.lineTo(x+T*.94,y+T*.28);ctx.lineTo(x+T*.94,y+T*.5);ctx.lineTo(x+T*.06,y+T*.8);ctx.closePath();ctx.fill();
-  ctx.strokeStyle='#9cc4ff';ctx.lineWidth=1;ctx.stroke();
-  ctx.beginPath();ctx.moveTo(x+T*.4,y+T*.4);ctx.lineTo(x+T*.4,y+T*.68);ctx.moveTo(x+T*.68,y+T*.34);ctx.lineTo(x+T*.68,y+T*.6);ctx.stroke();
-}
-function drawTown(){
-  // casa
-  let x=8*T,y=(SURF-1)*T;
-  rect(x+T*.12,y+T*.4,T*.76,T*.6,'#efe6d2');rect(x+T*.05,y+T*.22,T*.9,T*.2,'#c4553b');
-  rect(x+T*.4,y+T*.62,T*.2,T*.38,'#6b4423');rect(x+T*.2,y+T*.5,T*.14,T*.14,'#5aa9e6');
-  // fábrica
-  x=9*T;
-  rect(x+T*.08,y-T*.2,T*.84,T*1.2,'#6a6670');rect(x+T*.08,y-T*.2,T*.84,T*.15,'#55515b');
-  rect(x+T*.58,y-T*.9,T*.22,T*.7,'#4a4650');
-  rect(x+T*.2,y+T*.1,T*.16,T*.16,'#f2c14e');rect(x+T*.2,y+T*.45,T*.16,T*.16,'#f2c14e');
+function drawCave(){
+  for(let r=0;r<CAVE_ROWS;r++)for(let c=0;c<COLS;c++)drawCaveTile(c,r,S.cave[r][c]);
 }
 function draw(dt){
-  const W=COLS*T,H=ROWS*T;
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  const haze=Math.min(1,Math.max(0,(S.ppm-420)/90));
-  const g=ctx.createLinearGradient(0,0,0,SURF*T);
-  g.addColorStop(0,mix('#4aa8f0','#a8865a',haze));g.addColorStop(1,mix('#bfe6ff','#e2b878',haze));
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,SURF*T);
-  // sol
-  ctx.fillStyle=mix('#fff3a8','#ffb347',haze);ctx.beginPath();ctx.arc(W*.78,T*1.1,T*(.55+haze*.15),0,7);ctx.fill();
-  // nubes
-  ctx.fillStyle='rgba(255,255,255,.85)';
-  for(let i=0;i<2;i++){const cx=((S.t*6*(i+1)+i*140)%(W+80))-40;rect(cx,T*(.6+i*.9),T*1.6,T*.4,'rgba(255,255,255,.8)');rect(cx+T*.3,T*(.35+i*.9),T*.9,T*.3,'rgba(255,255,255,.8)')}
-  const wc=waterCols();
-  for(let r=SURF;r<ROWS;r++)for(let c=0;c<COLS;c++){
-    const t=S.grid[r][c];
-    if(r===SURF&&c<wc){
-      rect(c*T,r*T,T,T,'#2f7fd1');
-      const w=Math.sin(S.t*2+c)*T*.05;rect(c*T,r*T+w+T*.1,T,T*.12,'#6db3f2');
-      rect(c*T+T*.2,r*T+T*.6,T*.3,T*.1,'#2468b0');
-    }else drawTile(c,r,t);
-  }
-  // marca de columnas plantables
-  if(S.tool!=='pick'&&!S.paused){
-    ctx.fillStyle='rgba(255,255,255,.14)';
-    for(let c=Math.max(LAND0,wc);c<=LAND1;c++){const o=S.obj[c];if(!o||o.dead)ctx.fillRect(c*T,(SURF-3)*T,T,3*T)}
-  }
-  drawTown();
-  for(let c=0;c<COLS;c++){const o=S.obj[c];if(!o)continue;if(o.k==='tree')drawTree(c,o);else drawSolar(c)}
-  // humo
-  if(!S.paused){
-    S.spawn+=dt*emis()*1.4;
-    while(S.spawn>=1){S.spawn--;S.smoke.push({x:9*T+T*.69,y:(SURF-1)*T-T*.9,l:0})}
-  }
-  S.smoke=S.smoke.filter(p=>p.l<3.2);
-  for(const p of S.smoke){if(!S.paused){p.l+=dt;p.y-=dt*T*.7;p.x+=dt*T*.15}
-    ctx.fillStyle='rgba(70,66,76,'+(0.7*(1-p.l/3.2)).toFixed(2)+')';const s=T*(.3+p.l*.25);ctx.fillRect(p.x-s/2,p.y-s/2,s,s)}
+  if(S.mode==='cave')drawCave();else drawWorld(dt);
 }
 
 function resize(){
-  const w=$('wrap');
-  T=Math.max(16,Math.floor(Math.min((w.clientWidth-6)/COLS,(w.clientHeight-6)/ROWS)));
+  const w=$('wrap'),R=rows();
+  T=Math.max(16,Math.floor(Math.min((w.clientWidth-6)/COLS,(w.clientHeight-6)/R)));
   dpr=Math.min(2,window.devicePixelRatio||1);
-  cv.width=COLS*T*dpr;cv.height=ROWS*T*dpr;cv.style.width=COLS*T+'px';cv.style.height=ROWS*T+'px';
+  cv.width=COLS*T*dpr;cv.height=R*T*dpr;cv.style.width=COLS*T+'px';cv.style.height=R*T+'px';
   ctx.imageSmoothingEnabled=false;
 }
 new ResizeObserver(resize).observe($('wrap'));
@@ -337,11 +574,26 @@ window.addEventListener('resize',resize);
 let last=performance.now();
 function loop(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;
-  if(!S.paused){S.t+=dt;S.yt+=dt;if(S.yt>=YEAR_SEC){S.yt-=YEAR_SEC;yearTick()}else if(Math.floor(S.t*4)%1===0)$('prog').style.width=Math.min(100,((S.year-2025)+S.yt/YEAR_SEC)/(END_YEAR-2025)*100)+'%'}
+  if(!S.paused){
+    S.t+=dt;S.yt+=dt;
+    if(S.yt>=YEAR_SEC){S.yt-=YEAR_SEC;yearTick()}else refresh();
+    if(S.mode==='world'){
+      const sp=7*dt;
+      for(const k of ['x','y']){const v='v'+k,d=S[k]-S[v];S[v]=Math.abs(d)<=sp?S[k]:S[v]+Math.sign(d)*sp}
+      if(S.vx===S.x&&S.vy===S.y){
+        if(S.enter)enterCave();
+        else if(S.hold)tryMove(S.hold[0],S.hold[1]);
+        else if(S.path.length){const d=S.path.shift();if(!tryMove(d[0],d[1]))S.path=[]}
+        else if(S.after){const a=S.after;S.after=null;S.fx=a.c-S.x;S.fy=a.r-S.y;if(a.a)interact(a.a)}
+      }
+    }
+  }
+  setHint();
   draw(dt);
   requestAnimationFrame(loop);
 }
-newGame();resize();refresh();intro();
+window.__g={get S(){return S},yearTick,count};
+newGame();setMode('world');intro();
 requestAnimationFrame(loop);
 })();
 </script>
