@@ -48,6 +48,7 @@ canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touc
 #card{background:var(--panel);border:3px solid var(--accent);max-width:440px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow-y:auto}
 #card h2{font-family:var(--display);font-size:20px;margin:0;line-height:1.2;text-wrap:balance}
 #card p{margin:0;line-height:1.45;font-size:15.5px}
+.opt small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
 .tag{display:inline-block;font-size:12px;background:var(--bg);border:2px solid var(--line);padding:2px 8px;color:var(--accent);align-self:flex-start;letter-spacing:.03em}
 .sw{width:44px;height:44px;border:3px solid var(--text);flex:none}
 .head{display:flex;gap:12px;align-items:center}
@@ -96,22 +97,22 @@ canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touc
 
 <script>
 (function(){
-const COLS=10, ROWS=12, CAVE_ROWS=14, YEAR_SEC=8, END_YEAR=2050, LOSE_SEA=60;
-const COST={tree:4,solar:8,pos:5};
+const COLS=10, ROWS=12, CAVE_ROWS=14, YEAR_SEC=36, END_YEAR=2050, LOSE_SEA=60;
+const COST={tree:5,solar:10,pos:6};
 const ROCKS={
  1:{n:'Suelo',kind:'Suelo',sci:1,c:'#8a5a32',a:'#6d4524',b:'#a4713f',
   fact:'El suelo nace cuando la lluvia, el viento y las raíces rompen la roca poco a poco. En Almería hay poco y se lo lleva la erosión cuando llueve de golpe.',
   q:'¿Qué ayuda a que el agua no se lleve el suelo?',o:['Las raíces de las plantas','Quitar todos los árboles','Que haga más calor'],a_:0},
- 2:{n:'Caliza',kind:'Roca sedimentaria',sci:2,c:'#d6cdb3',a:'#bdb396',b:'#ebe4cf',
+ 2:{n:'Caliza',kind:'Roca sedimentaria',sci:1,c:'#d6cdb3',a:'#bdb396',b:'#ebe4cf',
   fact:'Se forma con conchas y esqueletos de animales marinos que se acumulan en el fondo del mar. Guarda carbono dentro durante millones de años.',
   q:'¿Cómo se formó la caliza?',o:['Por lava que se enfría','Por restos marinos acumulados','Por un meteorito'],a_:1},
- 3:{n:'Yeso',kind:'Roca sedimentaria',sci:2,c:'#ece9e0',a:'#cfd4d8',b:'#fbfaf5',
+ 3:{n:'Yeso',kind:'Roca sedimentaria',sci:1,c:'#ece9e0',a:'#cfd4d8',b:'#fbfaf5',
   fact:'Se forma cuando se evapora el agua de mares antiguos y quedan las sales. En Sorbas el agua ha disuelto el yeso y ha creado cuevas enormes.',
   q:'¿Qué le pasa al yeso con el agua?',o:['Se disuelve poco a poco y forma cuevas','Se convierte en hierro','No le pasa nada'],a_:0},
- 4:{n:'Andesita',kind:'Roca ígnea (volcánica)',sci:3,c:'#6d6572',a:'#4f4855',b:'#9a6a66',
+ 4:{n:'Andesita',kind:'Roca ígnea (volcánica)',sci:2,c:'#6d6572',a:'#4f4855',b:'#9a6a66',
   fact:'Cabo de Gata es un antiguo volcán. Hace unos 15 millones de años salió magma que se enfrió rápido al llegar a la superficie.',
   q:'La andesita viene de…',o:['Magma que se enfría','Conchas del mar','Fósiles de dinosaurio'],a_:0},
- 5:{n:'Mármol',kind:'Roca metamórfica',sci:4,c:'#f2f0f0',a:'#b8b6c4',b:'#ffffff',
+ 5:{n:'Mármol',kind:'Roca metamórfica',sci:2,c:'#f2f0f0',a:'#b8b6c4',b:'#ffffff',
   fact:'El mármol de Macael nació cuando la caliza quedó enterrada y recibió mucha presión y calor, sin llegar a fundirse.',
   q:'¿Qué transforma la caliza en mármol?',o:['Presión y calor en el interior','Un río que la arrastra','El viento del desierto'],a_:0}
 };
@@ -126,14 +127,50 @@ const CARDS={r1:ROCKS[1],r2:ROCKS[2],r3:ROCKS[3],r4:ROCKS[4],r5:ROCKS[5],
   fact:'La posidonia es una planta marina que forma praderas bajo el agua. Captura CO₂, da refugio a peces y frena la erosión de las playas. Cabo de Gata tiene praderas protegidas.',
   q:'La posidonia es…',o:['Una planta marina','Un tipo de pez','Una roca volcánica'],a_:0}
 };
-/* Pantallas del mapa (2x2). # muro  ~ mar  , aguas someras  T parcela de árbol  S tejado  H casa  N profe  F fábrica
-   C cueva  R muestra de roca  c cactus  P pradera de posidonia  1 2 3 playa que se inunda al subir el mar */
+Object.assign(CARDS,{
+ gei:{n:'Efecto invernadero',kind:'Panel informativo',c:'#f2a93b',
+  fact:'La atmósfera retiene parte del calor del Sol, como el cristal de un invernadero. Es natural y necesario: sin él la Tierra sería unos 33 °C más fría. El problema es el exceso de gases como el CO₂ y el metano.',
+  q:'¿Qué pasaría sin efecto invernadero natural?',o:['La Tierra sería mucho más fría','Haría mucho más calor','No cambiaría nada'],a_:0},
+ causas:{n:'Causas del cambio climático',kind:'Panel informativo',c:'#f2a93b',
+  fact:'Al quemar petróleo, gas y carbón para el transporte, la electricidad y la industria se libera CO₂. La tala de bosques y la ganadería intensiva también aumentan los gases de efecto invernadero.',
+  q:'¿Qué actividad emite más CO₂?',o:['Quemar combustibles fósiles','Regar un huerto','Plantar árboles'],a_:0},
+ desert:{n:'Desertificación',kind:'Panel informativo',c:'#f2a93b',
+  fact:'Almería es una de las zonas más áridas de Europa. Con menos lluvia y más calor el suelo pierde plantas y se erosiona. Eso se llama desertificación.',
+  q:'¿Qué ayuda a frenar la desertificación?',o:['Mantener vegetación y cuidar el suelo','Talar los árboles','Quemar rastrojos'],a_:0},
+ agua:{n:'El agua en Almería',kind:'Panel informativo',c:'#f2a93b',
+  fact:'En Almería llueve poco y el agua viene de pozos, desaladoras y aguas regeneradas. Ahorrar agua y regar de forma eficiente es una forma de adaptarse al cambio climático.',
+  q:'Adaptarse al cambio climático es…',o:['Prepararnos para sus efectos','Negar que existe','Emitir más CO₂'],a_:0},
+ clima:{n:'Tiempo y clima',kind:'Panel informativo',c:'#f2a93b',
+  fact:'El tiempo es lo que pasa hoy o esta semana: lluvia, calor, viento. El clima es el promedio del tiempo durante muchos años, normalmente 30 o más.',
+  q:'El clima de un lugar es…',o:['El promedio del tiempo durante muchos años','Lo que pasa hoy','La previsión de mañana'],a_:0},
+ mitig:{n:'Mitigar y adaptar',kind:'Panel informativo',c:'#f2a93b',
+  fact:'Mitigar es reducir las emisiones, por ejemplo con energía solar o transporte público. Adaptar es prepararse para los efectos que ya llegan, por ejemplo guardando agua o protegiendo la costa. Hacen falta las dos cosas.',
+  q:'Instalar placas solares es una medida de…',o:['Mitigación','Adaptación','Ninguna de las dos'],a_:0},
+ mar:{n:'Sube el nivel del mar',kind:'Panel informativo',c:'#f2a93b',
+  fact:'Con el calentamiento el agua del mar se dilata y los glaciares y casquetes de hielo se funden, así que el nivel del mar sube. Las playas y las zonas bajas son las más afectadas.',
+  q:'¿Por qué sube el nivel del mar?',o:['El agua se dilata y el hielo se funde','Llueve más en la costa','Hay más peces'],a_:0},
+ oceano:{n:'El mar se calienta',kind:'Panel informativo',c:'#f2a93b',
+  fact:'El océano absorbe gran parte del calor y del CO₂ extra. Por eso se calienta y se acidifica. Las olas de calor marinas dañan praderas como las de posidonia.',
+  q:'El océano absorbe…',o:['Calor y CO₂ de la atmósfera','Solo sal','Solo lluvia'],a_:0}
+});
+[1,2,3,4,5].forEach(t=>{ROCKS[t].rw=2});['tree','solar','pos'].forEach(k=>{CARDS[k].rw=2});
+Object.keys(CARDS).forEach(k=>{if(CARDS[k].rw===undefined)CARDS[k].rw=5});
+const BOARDS=[[['desert','agua'],['clima','mitig']],[['gei','causas'],['mar','oceano']]];
+const POLICIES=[
+ {id:'bus',t:'Mitigación',n:'Transporte público y bicis',cost:12,e:'Las emisiones del pueblo bajan 0,5 ppm al año.'},
+ {id:'reci',t:'Mitigación',n:'Ahorro de energía y reciclaje',cost:10,e:'Las emisiones del pueblo bajan 0,4 ppm al año.'},
+ {id:'ev',t:'Mitigación',n:'Coches eléctricos y puntos de carga',cost:14,e:'Las emisiones del pueblo bajan 0,5 ppm al año.'},
+ {id:'agua',t:'Adaptación',n:'Depósitos de agua y riego eficiente',cost:10,e:'Los árboles resisten sequías, olas de calor e incendios.'},
+ {id:'dunas',t:'Adaptación',n:'Recuperar dunas y playa',cost:14,e:'El mar debe subir 15 cm más para inundar el pueblo y las tormentas hacen menos daño.'}
+];
+/* Pantallas del mapa (2x2). I panel informativo  A Ayuntamiento  # muro  ~ mar  , aguas someras  T parcela de árbol  S tejado  H casa  N profe  F fábrica
+   C cueva  c cactus  P pradera de posidonia  1 2 3 playa que se inunda al subir el mar */
 const MAPS=[[
- ["##########","#c...T..c#","#..T...T.#","#.c.....c#","#...R....#","#.T....T..","#.........","#c...T..c#","#........#","#..c...c.#","#....T...#","####..####"],
- ["##########","#.R..###.#","#..c.#C#.#","#....#.#.#","#........#",".........#",".........#","#...c....#","#.c.....c#","#....R...#","#........#","####..####"]
+ ["##########","#c...T..c#","#..T...T.#","#.c.....c#","#...I....#","#.T....T..","#.........","#c...T..c#","#..I.....#","#..c...c.#","#....T...#","####..####"],
+ ["##########","#.I..###.#","#..c.#C#.#","#....#.#.#","#........#",".........#",".........#","#...c....#","#.c.....c#","#....I...#","#........#","####..####"]
 ],[
- ["####..####","#........#","#.SS..SS.#","#........#","#..N.....#","#.........","#.........","#.H....F.#","#........#","#.c....c.#","#........#","##########"],
- ["####..####","#...R....#","#.....R..#","#....321,~","#....321P~",".....321,~",".....321P~","#....321,~","#....321P~","#.....21,~","#.R...1P~~","####~~~~~~"]
+ ["####..####","#........#","#.SS..SS.#","#....A...#","#..N.....#","#.........","#I........","#.H....F.#","#........#","#.c..I.c.#","#........#","##########"],
+ ["####..####","#...I....#","#.....I..#","#....321,~","#....321P~",".....321,~",".....321P~","#....321,~","#....321P~","#.....21,~","#.....1P~~","####~~~~~~"]
 ]];
 const THEME=[[
  {g:'#d8b06a',ga:'#c49a54',gb:'#e8c78a',w:'#a0693c',wa:'#7d4f2b',wb:'#b98152'},
@@ -142,13 +179,14 @@ const THEME=[[
  {g:'#c8b690',ga:'#b09d78',gb:'#dccba6',w:'#8a7b6b',wa:'#6a5c4e',wb:'#a4947f'},
  {g:'#ead7a0',ga:'#d6c186',gb:'#f6e8c0',w:'#6d6572',wa:'#4f4855',wb:'#9a6a66'}
 ]];
-const SAMPLE=[[2,3],[0,4]];
 const NAMES=[['Desierto de Tabernas','Sorbas'],['Pueblo','Costa de Cabo de Gata']];
 const QUESTS=[
- {id:'rocks',t:'Descubre las 5 rocas de Almería',g:5,n:()=>Object.keys(S.found).length},
+ {id:'read',t:'Lee 4 paneles informativos',g:4,n:()=>Object.keys(S.read).length},
  {id:'solar',t:'Instala 3 placas solares en el pueblo',g:3,n:()=>count('solar')},
  {id:'tree',t:'Ten 4 árboles vivos en Tabernas',g:4,n:()=>count('tree')},
- {id:'pos',t:'Siembra 3 praderas de posidonia en la costa',g:3,n:()=>count('pos')}
+ {id:'pos',t:'Siembra 3 praderas de posidonia en la costa',g:3,n:()=>count('pos')},
+ {id:'ayto',t:'Aprueba 2 medidas en el Ayuntamiento',g:2,n:()=>Object.keys(S.pol).length},
+ {id:'rocks',t:'Repasa 3 rocas en las cuevas de Sorbas',g:3,n:()=>Object.keys(S.found).length}
 ];
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
@@ -170,16 +208,17 @@ function makeCave(){
   return g;
 }
 function newGame(){
-  S={year:2025,yt:0,t:0,ppm:420,sci:8,mode:'world',sx:0,sy:1,x:5,y:5,vx:5,vy:5,fx:0,fy:-1,
-     hold:null,path:[],after:null,spots:{},taken:{},found:{},seen:{},qdone:{},cave:makeCave(),
+  S={year:2025,yt:0,t:0,ppm:420,sci:10,mode:'world',sx:0,sy:1,x:5,y:5,vx:5,vy:5,fx:0,fy:-1,
+     hold:null,path:[],after:null,spots:{},read:{},pol:{},found:{},seen:{},qdone:{},cave:makeCave(),
      smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
   S.spots['0,0,5,1']={k:'tree',dead:false,born:-9};
 }
 const temp=()=>Math.max(1,1.1+(S.ppm-420)*0.012);
-const sea=()=>Math.max(0,Math.round((temp()-1.1)*60));
+const sea=()=>Math.max(0,Math.round((temp()-1.1)*60)-(S.pol.dunas?15:0));
 const floodStep=()=>Math.min(3,Math.floor(sea()/20));
 function count(k){return Object.values(S.spots).filter(o=>o.k===k&&!o.dead).length}
-const emis=()=>Math.max(0.3,4-0.8*count('solar'));
+const emis=()=>Math.max(0.3,5.2-0.8*count('solar')-(S.pol.bus?.5:0)-(S.pol.reci?.4:0)-(S.pol.ev?.5:0));
+const rate=()=>emis()-0.4*count('tree')-0.5*count('pos');
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2000)}
 function modal(html,after){
@@ -192,28 +231,29 @@ $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');i
   if(a==='close')closeModal();
   else if(a==='again'){newGame();$('modal').hidden=true;setMode('world');S.paused=false}
   else if(a==='opt')answer(b);
+  else if(a==='buy')buy(b.dataset.id);
 });
 
 function intro(){
   modal(`<h2>Guardianes de Cabo de Gata</h2>
-  <span class="tag">Misión 2025 → 2050</span>
-  <p>La fábrica del pueblo lanza CO₂ y el planeta se calienta. Si el mar sube 60 cm, el pueblo se inunda. Tienes 25 años.</p>
-  <p><b>Muévete</b> con la cruceta o tocando el mapa. Pulsa <b>A</b> para actuar: hablar, recoger rocas, plantar o instalar placas.</p>
-  <p>La <b>Ciencia 🔬</b> se gana excavando en las cuevas de Sorbas y recogiendo rocas. Gástala en placas, árboles y posidonia.</p>
-  <p>Objetivo: llegar a 2050 con menos de <b>+1.5 °C</b>. Habla primero con la profe.</p>
+  <span class="tag">Misión 2025 → 2050 · unos 15 minutos</span>
+  <p>El CO₂ de la atmósfera sube y el planeta se calienta. Tu misión: llegar a 2050 con menos de <b>+1.5 °C</b> de calentamiento y sin que el mar suba 60 cm.</p>
+  <p><b>Muévete</b> con la cruceta o tocando el mapa. Pulsa <b>A</b> para actuar.</p>
+  <p>Lee los <b>paneles informativos</b> y responde para ganar <b>Ciencia 🔬</b>. Con ella instalas placas solares, plantas árboles y posidonia, y apruebas medidas en el Ayuntamiento.</p>
+  <p>Habla primero con la profe. Las cuevas de Sorbas sirven para repasar geología.</p>
   <button class="btn" data-act="close">¡Empezar!</button>`);
 }
-function showCard(key){
+function showCard(key,again){
   const R=CARDS[key];
   modal(`<div class="head"><div class="sw" style="background:${R.c}"></div><div><h2>${R.n}</h2></div></div>
   <span class="tag">${R.kind}</span>
   <p>${R.fact}</p>
-  <p><b>${R.q}</b></p>
+  ${again?'<button class="btn" data-act="close">Seguir</button>':`<p><b>${R.q}</b></p>
   <div class="opts">${R.o.map((o,i)=>`<button class="opt" data-act="opt" data-i="${i}" data-k="${key}">${o}</button>`).join('')}</div>
-  <div id="fb"></div>`);
+  <div id="fb"></div>`}`);
 }
 function answer(b){
-  const key=b.dataset.k,R=CARDS[key],i=+b.dataset.i,ok=i===R.a_,rw=key[0]==='r'&&key.length===2?5:3;
+  const key=b.dataset.k,R=CARDS[key],i=+b.dataset.i,ok=i===R.a_,rw=R.rw;
   document.querySelectorAll('.opt').forEach((o,j)=>{o.disabled=true;if(j===R.a_)o.classList.add('right')});
   if(!ok)b.classList.add('wrong');
   if(ok)S.sci+=rw;
@@ -225,16 +265,29 @@ function foundRock(t){
   return false;
 }
 function checkQuests(){
-  QUESTS.forEach(q=>{if(!S.qdone[q.id]&&q.n()>=q.g){S.qdone[q.id]=true;S.sci+=4;setTimeout(()=>toast('Misión cumplida: '+q.t+' (+4 🔬)'),1200)}});
+  QUESTS.forEach(q=>{if(!S.qdone[q.id]&&q.n()>=q.g){S.qdone[q.id]=true;S.sci+=5;setTimeout(()=>toast('Misión cumplida: '+q.t+' (+5 🔬)'),1200)}});
 }
 function questModal(){
   const done=QUESTS.every(q=>S.qdone[q.id]);
   modal(`<h2>Misiones</h2>
   <ul class="quests">${QUESTS.map(q=>`<li class="${S.qdone[q.id]?'done':''}"><span class="ck">${S.qdone[q.id]?'[x]':'[ ]'}</span><span>${q.t}<small>${Math.min(q.n(),q.g)}/${q.g}</small></span></li>`).join('')}</ul>
-  <p>Cada misión cumplida da +4 🔬.</p>
+  <p>Cada misión cumplida da +5 🔬.</p>
   <p><b>Objetivo final:</b> llegar a 2050 por debajo de +1.5 °C. Ahora estás en +${temp().toFixed(1)} °C.</p>
   <div class="rocks">${[1,2,3,4,5].map(t=>`<span title="${S.found[t]?ROCKS[t].n:'?'}" style="${S.found[t]?'background:'+ROCKS[t].c:''}"></span>`).join('')}</div>
   <button class="btn" data-act="close">${done?'Genial':'Seguir jugando'}</button>`);
+}
+function boardId(c,r){let n=0;const m=MAPS[S.sy][S.sx];for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(m[y][x]==='I'){if(x===c&&y===r)return BOARDS[S.sy][S.sx][n];n++}}
+function aytoModal(msg){
+  modal(`<h2>Ayuntamiento</h2><span class="tag">Decisiones del pueblo</span>
+  <p>Tienes <b>${S.sci} 🔬</b>. Mitigar es reducir las emisiones. Adaptar es prepararse para los efectos del cambio climático.</p>
+  ${msg?'<p><b>'+msg+'</b></p>':''}
+  <div class="opts">${POLICIES.map(p=>S.pol[p.id]?`<button class="opt right" disabled>${p.n} (hecho)</button>`:`<button class="opt" data-act="buy" data-id="${p.id}"><b>${p.t}: ${p.n}</b> (${p.cost} 🔬)<small>${p.e}</small></button>`).join('')}</div>
+  <button class="btn" data-act="close">Salir</button>`);
+}
+function buy(id){
+  const p=POLICIES.find(x=>x.id===id);
+  if(S.sci<p.cost)return aytoModal('Te faltan '+(p.cost-S.sci)+' 🔬.');
+  S.sci-=p.cost;S.pol[id]=true;checkQuests();refresh();aytoModal('Medida aprobada: '+p.n+'.');
 }
 $('bQuest').addEventListener('click',()=>{if(!S.paused)questModal()});
 
@@ -251,7 +304,7 @@ function refresh(){
 }
 function setHint(){
   let h;
-  if(S.mode==='cave')h='Toca los bloques para excavar. Cada roca da 🔬.';
+  if(S.mode==='cave')h='Repaso de geología: excava y descubre las rocas.';
   else{
     const a=pickAction();
     h=a?hintFor(a):NAMES[S.sy][S.sx]+'. Toca el mapa o usa la cruceta.';
@@ -260,7 +313,7 @@ function setHint(){
 }
 function hintFor(a){
   return {tree:'A: plantar árbol ('+COST.tree+' 🔬)',pos:'A: sembrar posidonia ('+COST.pos+' 🔬)',solar:'A: instalar placa solar ('+COST.solar+' 🔬)',
-    talk:'A: hablar con la profe',fab:'A: examinar la fábrica',sample:'A: recoger muestra de roca'}[a.a];
+    talk:'A: hablar con la profe',fab:'A: examinar la fábrica',board:'A: leer el panel',ayto:'A: entrar al Ayuntamiento'}[a.a];
 }
 function setMode(m){
   S.mode=m;$('ctlWorld').hidden=m!=='world';$('ctlCave').hidden=m!=='cave';S.lastHint='';resize();refresh();
@@ -268,10 +321,10 @@ function setMode(m){
 
 /* ---------- mapa ---------- */
 const sk=(c,r)=>S.sx+','+S.sy+','+c+','+r;
-function ch(c,r){const x=MAPS[S.sy][S.sx][r][c];return x==='R'&&S.taken[sk(c,r)]?'.':x}
+function ch(c,r){return MAPS[S.sy][S.sx][r][c]}
 function solid(c,r){
   const x=ch(c,r);
-  if('#~NFSRHc'.includes(x))return true;
+  if('#~NFSHcIA'.includes(x))return true;
   if(x==='T'){const o=S.spots[sk(c,r)];return !!(o&&!o.dead)}
   return false;
 }
@@ -283,7 +336,8 @@ function actionAt(c,r){
   if(x==='S'&&!o)return{a:'solar',c,r};
   if(x==='N')return{a:'talk',c,r};
   if(x==='F')return{a:'fab',c,r};
-  if(x==='R')return{a:'sample',c,r};
+  if(x==='I')return{a:'board',c,r};
+  if(x==='A')return{a:'ayto',c,r};
   return null;
 }
 function pickAction(){
@@ -294,14 +348,11 @@ function pickAction(){
 }
 function interact(a){
   if(a.a==='talk')return npc();
-  if(a.a==='fab')return modal(`<h2>La fábrica</h2><span class="tag">Fuente de CO₂</span><p>Quema combustibles fósiles y ahora emite unos <b>${emis().toFixed(1)} ppm</b> de CO₂ al año. Cada placa solar del pueblo reduce sus emisiones en 0,8 ppm al año.</p><button class="btn" data-act="close">Vale</button>`);
-  if(a.a==='sample'){
-    S.taken[sk(a.c,a.r)]=true;S.sci+=3;const t=SAMPLE[S.sy][S.sx];
-    toast('+3 🔬 Muestra de '+ROCKS[t].n.toLowerCase());
-    refresh();foundRock(t);checkQuests();refresh();return;
-  }
+  if(a.a==='fab')return modal(`<h2>La fábrica</h2><span class="tag">Fuente de CO₂</span><p>Quema combustibles fósiles y ahora emite unos <b>${emis().toFixed(1)} ppm</b> de CO₂ al año. Cada placa solar reduce 0,8 ppm al año y cada medida del Ayuntamiento reduce más.</p><button class="btn" data-act="close">Vale</button>`);
+  if(a.a==='board'){const id=boardId(a.c,a.r),again=!!S.read[id];S.read[id]=true;checkQuests();showCard(id,again);return}
+  if(a.a==='ayto')return aytoModal();
   const k=a.a;
-  if(S.sci<COST[k]){toast('Te faltan '+(COST[k]-S.sci)+' 🔬. Excava en las cuevas de Sorbas.');return}
+  if(S.sci<COST[k]){toast('Te faltan '+(COST[k]-S.sci)+' 🔬. Lee paneles y completa misiones.');return}
   S.sci-=COST[k];S.spots[sk(a.c,a.r)]={k,dead:false,born:S.t};
   toast(k==='tree'?'Árbol plantado: absorbe CO₂':k==='solar'?'Placa solar: la fábrica emite menos':'Posidonia sembrada: absorbe CO₂');
   checkQuests();refresh();
@@ -310,10 +361,12 @@ function interact(a){
 function npc(){
   S.seen.talked=true;
   const q=QUESTS.find(q=>!S.qdone[q.id]);
-  const tips={rocks:'Para investigar rocas ve a las cuevas de Sorbas (arriba a la derecha) o busca muestras por el mapa.',
-    solar:'Las placas se instalan en los tejados del pueblo. Cuestan '+COST.solar+' 🔬.',
-    tree:'En Tabernas (arriba a la izquierda) hay parcelas de tierra para plantar árboles.',
-    pos:'En la costa de Cabo de Gata (abajo a la derecha) hay praderas de posidonia en aguas poco profundas.'};
+  const tips={read:'Lee los paneles informativos repartidos por el mapa. Si aciertas la pregunta ganas 🔬.',
+    solar:'Las placas se instalan en los tejados del pueblo. Cuestan '+COST.solar+' 🔬 y reducen las emisiones de la fábrica.',
+    tree:'En Tabernas (arriba a la izquierda) hay parcelas de tierra para plantar árboles. Absorben CO₂.',
+    pos:'En la costa de Cabo de Gata (abajo a la derecha) hay praderas de posidonia en aguas poco profundas.',
+    ayto:'En el Ayuntamiento puedes aprobar medidas de mitigación y de adaptación. Necesitas las dos.',
+    rocks:'Las cuevas de Sorbas (arriba a la derecha) sirven para repasar las rocas que ya estudiasteis.'};
   const tp=temp();
   const state=tp>1.5?'Vamos tarde: ya estamos en +'+tp.toFixed(1)+' °C. Hay que bajar el CO₂.':'Vamos bien: estamos en +'+tp.toFixed(1)+' °C. Hay que mantenerlo.';
   modal(`<h2>La profe</h2><span class="tag">${q?'Siguiente misión':'Misiones completadas'}</span>
@@ -413,34 +466,38 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>{const d=KEYS[e.key];if(d&&S.hold&&S.hold[0]===d[0]&&S.hold[1]===d[1])S.hold=null});
 
 /* ---------- clima ---------- */
+function killOne(k){const ks=Object.keys(S.spots).filter(x=>S.spots[x].k===k&&!S.spots[x].dead);if(!ks.length)return false;S.spots[ks[Math.floor(Math.random()*ks.length)]].dead=true;return true}
+const EVENTS={
+ 2031:()=>['Ola de calor','El cambio climático hace las olas de calor más frecuentes e intensas.',
+   S.pol.agua?'Gracias a los depósitos de agua y al riego eficiente, tus árboles resisten.':(killOne('tree')?'Sin agua suficiente se ha secado un árbol de Tabernas. Los depósitos de agua ayudan a adaptarse.':'No tenías árboles que perder.')],
+ 2036:()=>['DANA: lluvias torrenciales','Con una atmósfera y un mar más calientes, las lluvias pueden ser más violentas.',
+   S.pol.dunas?'Las dunas recuperadas frenan el agua y protegen la costa.':(killOne('pos'),S.sci=Math.max(0,S.sci-6),'El temporal daña la costa y la posidonia. Pierdes 6 🔬 en reparaciones. Las dunas protegen la playa.')],
+ 2041:()=>['Incendio forestal','El calor y la sequía aumentan el riesgo de incendios, que además liberan CO₂.',
+   S.pol.agua?'Los depósitos de agua ayudan a controlarlo. No hay pérdidas.':(killOne('tree'),killOne('tree'),S.ppm+=6,'Arden árboles de Tabernas y se liberan 6 ppm de CO₂.')],
+ 2046:()=>['Ola de calor marina','El mar absorbe gran parte del calor extra y se calienta.',
+   temp()<=1.5?'La temperatura es moderada y la posidonia resiste.':(killOne('pos'),'El agua demasiado caliente mata parte de la posidonia.')]
+};
 function yearTick(){
-  S.year++;S.sci+=1;
-  const tr=count('tree'),ps=count('pos');
-  S.ppm=Math.max(380,S.ppm+emis()-0.4*tr-0.5*ps);
-  const tp=temp();
-  if(tp>1.8&&tr>0&&Math.random()<0.35){
-    const ks=Object.keys(S.spots).filter(k=>S.spots[k].k==='tree'&&!S.spots[k].dead);
-    S.spots[ks[Math.floor(Math.random()*ks.length)]].dead=true;toast('Sequía: se ha secado un árbol en Tabernas');
-  }else if(tp>1.9&&ps>0&&Math.random()<0.3){
-    const ks=Object.keys(S.spots).filter(k=>S.spots[k].k==='pos'&&!S.spots[k].dead);
-    S.spots[ks[Math.floor(Math.random()*ks.length)]].dead=true;toast('Ola de calor marina: se ha muerto posidonia');
-  }
-  const f=floodStep();
-  if(f>S.lastFlood){S.lastFlood=f;toast('El mar sube: la playa se estrecha')}
+  S.year++;S.sci+=2;
+  const tr=count('tree'),ps=count('pos'),tp=temp();
+  if(!S.pol.agua&&tp>1.8&&tr>0&&Math.random()<0.35){killOne('tree');toast('Sequía: se ha secado un árbol en Tabernas')}
+  else if(tp>1.9&&ps>0&&Math.random()<0.3){killOne('pos');toast('Ola de calor marina: se ha muerto posidonia')}
+  const f=floodStep();if(f>S.lastFlood){S.lastFlood=f;toast('El mar sube: la playa se estrecha')}
   refresh();
-  if(sea()>=LOSE_SEA)end(false,'sea');
-  else if(S.year>=END_YEAR)end(temp()<=1.5,'time');
+  if(S.year>=END_YEAR){end(temp()<=1.5,'time');return}
+  const ev=EVENTS[S.year];
+  if(ev){const [t,why,res]=ev();refresh();modal(`<h2>${t}</h2><span class="tag">Noticia de ${S.year}</span><p>${why}</p><p><b>${res}</b></p><button class="btn" data-act="close">Entendido</button>`)}
 }
 function end(win,why){
   S.over=true;S.paused=true;S.hold=null;S.path=[];
-  const tp=temp();
+  const tp=temp(),mit=['bus','reci','ev'].filter(k=>S.pol[k]).length,ada=['agua','dunas'].filter(k=>S.pol[k]).length;
   const title=win?'¡Lo conseguiste!':(why==='sea'?'El mar llegó al pueblo':'Demasiado calor');
   const msg=win?'Llegaste a 2050 con el clima bajo control. Menos humo, más árboles y praderas de posidonia frenaron el calentamiento.'
     :(why==='sea'?'Con tanto calor el nivel del mar subió 60 cm y cubrió las casas. Hay que reducir el CO₂ antes.':'El pueblo sigue en pie, pero la temperatura superó +1.5 °C. Prueba a instalar placas solares y plantar desde el principio.');
   setTimeout(()=>modal(`<h2>${title}</h2><p>${msg}</p>
   <div class="stats-end"><div><b>${S.year}</b>año</div><div><b>${Math.round(S.ppm)} ppm</b>CO₂</div>
-  <div><b>+${tp.toFixed(1)} °C</b>temperatura</div><div><b>${Object.keys(S.found).length}/5</b>rocas descubiertas</div>
-  <div><b>${count('solar')}</b>placas solares</div><div><b>${count('tree')+count('pos')}</b>árboles y posidonia vivos</div></div>
+  <div><b>+${tp.toFixed(1)} °C</b>temperatura</div>
+  <div><b>${count('solar')}</b>placas solares</div><div><b>${count('tree')+count('pos')}</b>árboles y posidonia vivos</div><div><b>${mit}</b>medidas de mitigación</div><div><b>${ada}</b>medidas de adaptación</div></div>
   <p><b>Para comentar en clase:</b> ¿qué cambió en la costa durante tu partida y qué decisión habría cambiado el resultado?</p>
   <button class="btn" data-act="again">Jugar otra vez</button>`),400);
 }
@@ -474,11 +531,6 @@ function tileW(c,r,x,th,fl){
     rect(X+T*.2,Y+T*.25,T*.6,T*.75,'#1a1520');rect(X+T*.28,Y+T*.15,T*.44,T*.15,'#1a1520');
   }
   if(x==='S'||x==='H'){house(X,Y,x==='S'?'#c4553b':'#3d7ea6');if(x==='S'&&S.spots[sk(c,r)])solarRoof(X,Y)}
-  if(x==='R'){
-    const t=SAMPLE[S.sy][S.sx],R=ROCKS[t];
-    rect(X+T*.2,Y+T*.35,T*.6,T*.45,R.c);rect(X+T*.3,Y+T*.25,T*.35,T*.2,R.c);rect(X+T*.5,Y+T*.55,T*.2,T*.15,R.a);
-    if(Math.floor(S.t*2)%2===0)rect(X+T*.7,Y+T*.2,T*.1,T*.1,'#fff');
-  }
 }
 function objW(c,r,x){
   const X=c*T,Y=r*T,o=S.spots[sk(c,r)];
@@ -514,6 +566,20 @@ function objW(c,r,x){
     rect(X+T*.62,Y-T*.55,T*.24,T*.8,'#4a4650');
     rect(X+T*.15,Y+T*.4,T*.16,T*.16,'#f2c14e');rect(X+T*.4,Y+T*.4,T*.16,T*.16,'#f2c14e');
   }
+  if(x==='I'){
+    const unread=!S.read[boardId(c,r)];
+    rect(X+T*.46,Y+T*.5,T*.08,T*.5,'#6b4423');
+    rect(X+T*.12,Y+T*.12,T*.76,T*.5,'#6b4423');rect(X+T*.17,Y+T*.17,T*.66,T*.4,'#f2e3b3');
+    rect(X+T*.24,Y+T*.25,T*.5,T*.05,'#3a2a1a');rect(X+T*.24,Y+T*.35,T*.4,T*.05,'#3a2a1a');rect(X+T*.24,Y+T*.45,T*.45,T*.05,'#3a2a1a');
+    if(unread&&Math.floor(S.t*2)%2===0)rect(X+T*.72,Y-T*.02,T*.14,T*.24,'#f2a93b');
+  }
+  if(x==='A'){
+    rect(X+T*.05,Y+T*.3,T*.9,T*.7,'#efe6d2');rect(X,Y+T*.15,T,T*.2,'#b9a98a');rect(X+T*.2,Y,T*.6,T*.2,'#b9a98a');
+    rect(X+T*.14,Y+T*.4,T*.1,T*.6,'#d9cdb2');rect(X+T*.76,Y+T*.4,T*.1,T*.6,'#d9cdb2');
+    rect(X+T*.4,Y+T*.6,T*.2,T*.4,'#6b4423');
+    rect(X+T*.5,Y-T*.55,T*.04,T*.6,'#555');
+    rect(X+T*.54,Y-T*.55,T*.3,T*.1,'#2f8f3a');rect(X+T*.54,Y-T*.45,T*.3,T*.1,'#fff');rect(X+T*.54,Y-T*.35,T*.3,T*.1,'#2f8f3a');
+  }
 }
 function drawPlayer(){
   const X=S.vx*T,Y=S.vy*T,step=(Math.abs(S.vx-S.x)+Math.abs(S.vy-S.y))>0.05&&Math.floor(S.t*10)%2?T*.04:0;
@@ -524,7 +590,7 @@ function drawPlayer(){
 }
 function drawWorld(dt){
   const th=THEME[S.sy][S.sx],fl=floodStep();
-  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)tileW(c,r,MAPS[S.sy][S.sx][r][c]==='R'&&S.taken[sk(c,r)]?'.':MAPS[S.sy][S.sx][r][c],th,fl);
+  for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++)tileW(c,r,MAPS[S.sy][S.sx][r][c],th,fl);
   if(S.sx===0&&S.sy===1){
     const s=sea();
     if(s>=20)for(let c=0;c<COLS;c++)rect(c*T,(ROWS-1)*T+T*.2,T,T*.8,'rgba(79,163,232,.85)');
@@ -576,6 +642,8 @@ function loop(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;
   if(!S.paused){
     S.t+=dt;S.yt+=dt;
+    S.ppm=Math.max(380,S.ppm+rate()*dt/YEAR_SEC);
+    if(sea()>=LOSE_SEA&&!S.over)end(false,'sea');
     if(S.yt>=YEAR_SEC){S.yt-=YEAR_SEC;yearTick()}else refresh();
     if(S.mode==='world'){
       const sp=7*dt;
