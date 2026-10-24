@@ -117,7 +117,11 @@ textarea.code{font:12px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--te
 <script>
 (function(){
 const COLS=10, ROWS=12, CAVE_ROWS=14, YEAR_SEC=36, END_YEAR=2050, LOSE_SEA=60;
-const COST={tree:6,solar:12,pos:7};
+/* Equilibrio: CO₂ en ppm al año, precios en 🔬 y ritmo de la basura. En pruebas se puede sustituir con window.__BAL__. */
+const BAL=Object.assign({base:6,solar:1,bus:.7,reci:.5,ev:.7,tree:.4,pos:.5,floor:420,litterSec:20,litterMax:5,stipend:2,costMul:1},window.__TEST__&&window.__BAL__||{});
+const price=v=>Math.round(v*BAL.costMul);
+const COST={tree:price(6),solar:price(12),pos:price(7)};
+const ppmTxt=v=>String(v).replace('.',',');
 const ROCKS={
  1:{n:'Suelo',kind:'Suelo',sci:1,c:'#8a5a32',a:'#6d4524',b:'#a4713f',
   fact:'El suelo nace cuando la lluvia, el viento y las raíces rompen la roca poco a poco. En Almería hay poco y se lo lleva la erosión cuando llueve de golpe.',
@@ -187,11 +191,11 @@ const RETOS=[
 RETOS.forEach((r,i)=>{CARDS['reto'+i]=Object.assign({n:'Reto de la profe',kind:'Reto',c:'#7bd88f',rw:4},r)});
 const BOARDS=[[['desert','agua'],['clima','mitig']],[['gei','causas'],['mar','oceano']]];
 const POLICIES=[
- {id:'bus',t:'Mitigación',n:'Transporte público y bicis',cost:14,e:'Las emisiones del pueblo bajan 0,5 ppm al año.'},
- {id:'reci',t:'Mitigación',n:'Ahorro de energía y reciclaje',cost:12,e:'Las emisiones del pueblo bajan 0,4 ppm al año.'},
- {id:'ev',t:'Mitigación',n:'Coches eléctricos y puntos de carga',cost:16,e:'Las emisiones del pueblo bajan 0,5 ppm al año.'},
- {id:'agua',t:'Adaptación',n:'Depósitos de agua y riego eficiente',cost:12,e:'Los árboles resisten sequías, olas de calor e incendios.'},
- {id:'dunas',t:'Adaptación',n:'Recuperar dunas y playa',cost:16,e:'El mar debe subir 15 cm más para inundar el pueblo y las tormentas hacen menos daño.'}
+ {id:'bus',t:'Mitigación',n:'Transporte público y bicis',cost:price(14),e:'Las emisiones del pueblo bajan '+ppmTxt(BAL.bus)+' ppm al año.'},
+ {id:'reci',t:'Mitigación',n:'Ahorro de energía y reciclaje',cost:price(12),e:'Las emisiones del pueblo bajan '+ppmTxt(BAL.reci)+' ppm al año.'},
+ {id:'ev',t:'Mitigación',n:'Coches eléctricos y puntos de carga',cost:price(16),e:'Las emisiones del pueblo bajan '+ppmTxt(BAL.ev)+' ppm al año.'},
+ {id:'agua',t:'Adaptación',n:'Depósitos de agua y riego eficiente',cost:price(12),e:'Los árboles resisten sequías, olas de calor e incendios.'},
+ {id:'dunas',t:'Adaptación',n:'Recuperar dunas y playa',cost:price(16),e:'El mar debe subir 15 cm más para inundar el pueblo y las tormentas hacen menos daño.'}
 ];
 /* Pantallas del mapa (2x2). I panel informativo  A Ayuntamiento  # muro  ~ mar  , aguas someras  T parcela de árbol  S tejado  H casa  N profe  F fábrica
    C cueva  c cactus  P pradera de posidonia  1 2 3 playa que se inunda al subir el mar */
@@ -262,8 +266,8 @@ const temp=()=>Math.max(1,1.1+(S.ppm-420)*0.012);
 const sea=()=>Math.max(0,Math.round((temp()-1.1)*60)-(S.pol.dunas?15:0));
 const floodStep=()=>Math.min(3,Math.floor(sea()/20));
 function count(k){return Object.values(S.spots).filter(o=>o.k===k&&!o.dead).length}
-const emis=()=>Math.max(0.3,4.7-0.8*count('solar')-(S.pol.bus?.5:0)-(S.pol.reci?.4:0)-(S.pol.ev?.5:0));
-const rate=()=>emis()-0.4*count('tree')-0.5*count('pos');
+const emis=()=>Math.max(0.3,BAL.base-BAL.solar*count('solar')-(S.pol.bus?BAL.bus:0)-(S.pol.reci?BAL.reci:0)-(S.pol.ev?BAL.ev:0));
+const rate=()=>emis()-BAL.tree*count('tree')-BAL.pos*count('pos');
 
 function modal(html,after){
   S.paused=true;S.hold=null;S.path=[];S.after=null;
@@ -378,10 +382,10 @@ const HELP=[
   <li><b>Botón A</b>Habla con la profe, lee paneles, planta o entra en edificios. También puedes tocarlos directamente.</li>
   <li><b>Cuatro zonas</b>Pueblo, Tabernas, Sorbas y la costa de Cabo de Gata. Pasa de una a otra por los huecos de los bordes. El minimapa de la esquina te dice dónde estás.</li>
   <li><b>Señal naranja</b>Hay algo nuevo: un panel sin leer o un reto de la profe.</li></ul>`],
- ['Ganar y gastar Ciencia',`<p><b>Para ganar 🔬:</b> lee los paneles y acierta su pregunta, haz los retos de la profe, cumple misiones, recoge basura (punto azul en el minimapa) y repasa rocas en la cueva de Sorbas. Además recibes 2 🔬 cada año.</p>
+ ['Ganar y gastar Ciencia',`<p><b>Para ganar 🔬:</b> lee los paneles y acierta su pregunta, haz los retos de la profe, cumple misiones, recoge basura (punto azul en el minimapa) y repasa rocas en la cueva de Sorbas. Además recibes ${BAL.stipend} 🔬 cada año.</p>
   <ul class="help">
-  <li><b>Placas solares · 12 🔬</b>En los tejados del pueblo. La fábrica echa menos CO₂. ¡Es lo que más ayuda!</li>
-  <li><b>Árboles · 6 🔬 y posidonia · 7 🔬</b>En Tabernas y en la costa. Absorben CO₂.</li>
+  <li><b>Placas solares · ${COST.solar} 🔬</b>En los tejados del pueblo. La fábrica echa menos CO₂. ¡Es lo que más ayuda!</li>
+  <li><b>Árboles · ${COST.tree} 🔬 y posidonia · ${COST.pos} 🔬</b>En Tabernas y en la costa. Absorben CO₂.</li>
   <li><b>Ayuntamiento</b>Medidas para <i>mitigar</i> (echar menos CO₂) y para <i>adaptarse</i> (protegerse de sequías y temporales).</li></ul>
   <p>Empieza hablando con <b>la profe</b>: está en el pueblo, con una señal naranja.</p>`]
 ];
@@ -443,7 +447,7 @@ function questModal(){
   const done=QUESTS.every(q=>S.qdone[q.id]);
   modal(`<h2>Misiones</h2>
   <ul class="quests">${QUESTS.map(q=>`<li class="${S.qdone[q.id]?'done':''}"><span class="ck">${S.qdone[q.id]?'[x]':'[ ]'}</span><span>${q.t}<small>${Math.min(q.n(),q.g)}/${q.g}</small></span></li>`).join('')}</ul>
-  <p>Cada misión cumplida da +5 🔬. Cada año recibes +2 🔬 de subvención. Además, aparece basura por el mapa (un punto azul en el minimapa): recógela para ganar +1 🔬.</p>
+  <p>Cada misión cumplida da +5 🔬. Cada año recibes +${BAL.stipend} 🔬 de subvención. Además, aparece basura por el mapa (un punto azul en el minimapa): recógela para ganar +1 🔬.</p>
   <p><b>Objetivo final:</b> llegar a 2050 por debajo de +1.5 °C. Ahora estás en +${temp().toFixed(1)} °C.</p>
   <div class="rocks">${[1,2,3,4,5].map(t=>`<span title="${S.found[t]?ROCKS[t].n:'?'}" style="${S.found[t]?'background:'+ROCKS[t].c:''}"></span>`).join('')}</div>
   <p style="font-size:13px;color:var(--muted)">El juego está en pausa mientras esta ventana está abierta.</p>
@@ -490,7 +494,7 @@ function setHint(){
 function questHint(){
   if(S.reto)return NAMES[S.sy][S.sx]+' · La profe tiene un reto para ti en el Pueblo';
   const q=QUESTS.find(q=>!S.qdone[q.id]);
-  const need={solar:COST.solar,tree:COST.tree,pos:COST.pos,ayto:12}[q&&q.id];
+  const need={solar:COST.solar,tree:COST.tree,pos:COST.pos,ayto:Math.min(...POLICIES.map(p=>p.cost))}[q&&q.id];
   const falta=need&&S.sci<need?' · Te faltan '+(need-S.sci)+' 🔬':'';
   return NAMES[S.sy][S.sx]+' · '+(q?q.t+' ('+Math.min(q.n(),q.g)+'/'+q.g+')'+falta:'Misiones hechas. Cuida el clima hasta 2050.');
 }
@@ -531,7 +535,7 @@ function pickAction(){
 }
 function interact(a){
   if(a.a==='talk')return npc();
-  if(a.a==='fab')return modal(`<h2>La fábrica</h2><span class="tag">Fuente de CO₂</span><p>Quema combustibles fósiles y ahora emite unos <b>${emis().toFixed(1)} ppm</b> de CO₂ al año. Cada placa solar reduce 0,8 ppm al año y cada medida del Ayuntamiento reduce más.</p><button class="btn" data-act="close">Vale</button>`);
+  if(a.a==='fab')return modal(`<h2>La fábrica</h2><span class="tag">Fuente de CO₂</span><p>Quema combustibles fósiles y ahora emite unos <b>${emis().toFixed(1)} ppm</b> de CO₂ al año. Cada placa solar reduce ${ppmTxt(BAL.solar)} ppm al año y cada medida del Ayuntamiento reduce más.</p><button class="btn" data-act="close">Vale</button>`);
   if(a.a==='board'){const id=boardId(a.c,a.r),again=!!S.read[id];S.read[id]=true;checkQuests();showCard(id,again);return}
   if(a.a==='ayto')return aytoModal();
   const k=a.a;
@@ -552,7 +556,7 @@ function npc(){
     ayto:'En el Ayuntamiento puedes aprobar medidas de mitigación y de adaptación. Necesitas las dos.',
     rocks:'Las cuevas de Sorbas (arriba a la derecha) sirven para repasar las rocas que ya estudiasteis.'};
   const tp=temp();
-  const need={solar:COST.solar,tree:COST.tree,pos:COST.pos,ayto:12}[q&&q.id];
+  const need={solar:COST.solar,tree:COST.tree,pos:COST.pos,ayto:Math.min(...POLICIES.map(p=>p.cost))}[q&&q.id];
   let ganar='';
   if(need&&S.sci<need){
     const op=[];
@@ -561,7 +565,7 @@ function npc(){
     if(S.reto)op.push('hacer mi reto (ahora mismo tengo uno)');
     if(roc>0)op.push('repasar '+roc+' roca'+(roc>1?'s':'')+' en las cuevas de Sorbas');
     if(bas>0)op.push('recoger la basura del mapa (hay '+bas+', mira el punto azul del minimapa)');
-    op.push('esperar: cada año recibes 2 🔬');
+    op.push('esperar: cada año recibes '+BAL.stipend+' 🔬');
     ganar=' Para esa misión necesitas '+need+' 🔬 y tienes '+S.sci+'. Puedes ganar más: '+op.join('; ')+'.';
   }
   const extra=(S.year>=2028&&count('solar')+Object.keys(S.pol).length<3)?' La fábrica es la mayor fuente de CO₂ del pueblo: las placas y las medidas del Ayuntamiento la hacen emitir menos.':'';
@@ -676,7 +680,7 @@ const EVENTS={
    temp()<=1.5?'La temperatura es moderada y la posidonia resiste.':(killOne('pos'),'El agua demasiado caliente mata parte de la posidonia.')]
 };
 function yearTick(){
-  S.year++;S.sci+=2;
+  S.year++;S.sci+=BAL.stipend;
   if(S.year>=2028&&(S.year-2028)%3===0&&S.retoN<RETOS.length){S.reto=true;toast('La profe tiene un reto para ti')}
   const tr=count('tree'),ps=count('pos'),tp=temp();
   if(S.year<END_YEAR&&(S.year-2025)%5===0)report('jugando');
@@ -864,13 +868,12 @@ window.addEventListener('pagehide',save);
 window.addEventListener('resize',resize);
 
 let last=performance.now();
-function loop(now){
-  const dt=Math.min(.1,(now-last)/1000);last=now;
+function tick(dt){
   if(!S.paused){
     S.t+=dt;S.yt+=dt;S.ls+=dt;S.sv=(S.sv||0)+dt;
     if(S.sv>=5){S.sv=0;save()}
-    if(S.ls>=30){S.ls-=30;if(S.litter.length<4)spawnLitter()}
-    S.ppm=Math.max(380,S.ppm+rate()*dt/YEAR_SEC);
+    if(S.ls>=BAL.litterSec){S.ls-=BAL.litterSec;if(S.litter.length<BAL.litterMax)spawnLitter()}
+    S.ppm=Math.max(BAL.floor,S.ppm+rate()*dt/YEAR_SEC);
     if(sea()>=LOSE_SEA&&!S.over)end(false,'sea');
     if(S.yt>=YEAR_SEC){S.yt-=YEAR_SEC;yearTick()}else refresh();
     if(S.mode==='world'){
@@ -887,10 +890,14 @@ function loop(now){
     }
   }
   setHint();
+}
+function loop(now){
+  const dt=Math.min(.1,(now-last)/1000);last=now;
+  if(!window.__FAST__)tick(dt);
   draw(dt);
   requestAnimationFrame(loop);
 }
-if(window.__TEST__)window.__g={get S(){return S},yearTick,count,CARDS};
+if(window.__TEST__)window.__g={get S(){return S},yearTick,count,CARDS,COST,POLICIES,run(sec){let t=0;while(t<sec&&!S.paused){tick(.1);t+=.1}return t}};
 newGame();setMode('world');if(!tryResume())askName();
 requestAnimationFrame(loop);
 })();
