@@ -8,6 +8,9 @@ Juego educativo en un solo archivo (`index.html`, sin dependencias) para **1º d
 - Ciencia (🔬) se gana con paneles informativos (8), retos de la profe (8, cada 3 años desde 2028), misiones (6), rocas (5), +2 al año y basura recogible (1 🔬, aparece cada 30 s, máximo 4).
 - Se gasta en placas solares, árboles, posidonia y 5 medidas del Ayuntamiento (mitigación y adaptación).
 - Eventos en 2031, 2036, 2041 y 2046 (ola de calor, DANA, incendio, ola de calor marina).
+- Tutorial de 4 pantallas al empezar (misión, marcador, controles, Ciencia), que se puede volver a abrir desde Misiones.
+- La partida se guarda sola en el navegador cada 5 s y al salir; al volver se ofrece continuarla o empezar como otra persona (tablets compartidas: el nombre no se rellena solo).
+- Los avisos van en cola para que no se pisen.
 - Al empezar el alumno escribe nombre y grupo. Al terminar se genera un **certificado PNG** descargable (nombre, resultado, aciertos, código). No se guardan datos en ningún servidor.
 
 ## Decisiones tomadas

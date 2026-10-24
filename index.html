@@ -76,6 +76,11 @@ textarea.code{font:12px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--te
 .stats-end{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .stats-end div{background:var(--bg);border:2px solid var(--line);padding:8px;font-size:13px;color:var(--muted)}
 .stats-end b{display:block;font-family:var(--display);font-size:18px;color:var(--text)}
+.help{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.help li{background:var(--bg);border:2px solid var(--line);padding:8px 10px;line-height:1.4;font-size:15px}
+.help b{display:block;color:var(--accent);font-size:13px;letter-spacing:.03em}
+.goal{display:flex;flex-direction:column;gap:6px;background:var(--bg);border:2px solid var(--accent);padding:10px}
+.nav{display:flex;gap:8px}.nav>*{flex:1}.nav .opt{text-align:center}
 .rocks{display:flex;gap:6px}
 .rocks span{width:22px;height:22px;border:2px solid var(--line);background:var(--bg)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
@@ -256,7 +261,6 @@ function count(k){return Object.values(S.spots).filter(o=>o.k===k&&!o.dead).leng
 const emis=()=>Math.max(0.3,4.7-0.8*count('solar')-(S.pol.bus?.5:0)-(S.pol.reci?.4:0)-(S.pol.ev?.5:0));
 const rate=()=>emis()-0.4*count('tree')-0.5*count('pos');
 
-function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2000)}
 function modal(html,after){
   S.paused=true;S.hold=null;S.path=[];S.after=null;
   $('card').innerHTML=html;$('modal').hidden=false;$('modal')._after=after;
@@ -270,14 +274,17 @@ $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');i
   else if(a==='dl')download();
   else if(a==='again'){const pl=Object.assign({},S.player,{intento:S.player.intento+1});newGame();S.player=pl;newSession();$('modal').hidden=true;setMode('world');S.paused=false}
   else if(a==='opt')answer(b);
+  else if(a==='help')intro(+b.dataset.i);
+  else if(a==='resume'){const sv=S.resume;S=sv;S.paused=false;S.lastHint='';$('modal').hidden=true;setMode(S.mode);toast('Partida recuperada: año '+S.year)}
+  else if(a==='fresh'){dropSave();newGame();setMode('world');askName()}
   else if(a==='buy')buy(b.dataset.id);
 });
 
 function askName(){
-  let n='',g='';try{n=localStorage.getItem('cg_n')||'';g=localStorage.getItem('cg_g')||''}catch(e){}
+  let g='';try{g=localStorage.getItem('cg_g')||''}catch(e){}
   modal(`<h2>¿Quién juega?</h2><span class="tag">Actividad de clase</span>
   <p>Escribe tu nombre. Aparecerá en el certificado que podrás descargar cuando termines.</p>
-  <div><label class="lb" for="pNombre">Nombre y apellido</label><input class="in" id="pNombre" maxlength="40" autocomplete="off" value="${esc(n)}"></div>
+  <div><label class="lb" for="pNombre">Nombre y apellido</label><input class="in" id="pNombre" maxlength="40" autocomplete="off"></div>
   <div><label class="lb" for="pGrupo">Curso y grupo (por ejemplo 1º A)</label><input class="in" id="pGrupo" maxlength="12" autocomplete="off" value="${esc(g)}"></div>
   <p class="err" id="pErr" hidden></p>
   <button class="btn" data-act="start">Continuar</button>`);
@@ -316,7 +323,7 @@ async function makeCard(win,why){
   let fs=84;x.font=B(fs);while(x.measureText(p.nombre).width>W-140&&fs>34){fs-=4;x.font=B(fs)}
   const y0=385+fs+14;x.fillStyle='#f4ecdc';x.fillText(p.nombre,W/2,y0);
   x.fillStyle='#f2a93b';x.font=B(34);x.fillText(p.grupo,W/2,y0+56);
-  x.fillStyle='#b9ad9c';x.font=R(30);x.fillText('ha completado la partida de 2025 a 2050',W/2,y0+110);
+  x.fillStyle='#b9ad9c';x.font=R(30);x.fillText(why==='sea'?'ha jugado de 2025 a '+p.year:'ha completado la partida de 2025 a 2050',W/2,y0+110);
   x.fillStyle=win?'#1f3a2a':'#3f2420';x.fillRect(120,y0+140,W-240,84);x.strokeStyle=win?'#7bd88f':'#ff7a63';x.lineWidth=4;x.strokeRect(120,y0+140,W-240,84);
   x.fillStyle=win?'#7bd88f':'#ff7a63';x.font=D(30);
   x.fillText(win?'LLEGÓ A 2050 BAJO +1.5 °C':(why==='sea'?'EL MAR INUNDÓ EL PUEBLO':'SUPERÓ +1.5 °C'),W/2,y0+195);
@@ -338,14 +345,55 @@ function download(){
   if(!S.cardUrl){toast('Un momento, se está creando la imagen.');return}
   const a=document.createElement('a');a.href=S.cardUrl;a.download=S.cardName||'guardianes.png';document.body.appendChild(a);a.click();a.remove();
 }
-function intro(){
-  modal(`<h2>Guardianes de Cabo de Gata</h2>
-  <span class="tag">2025 → 2050 · unos 15 minutos</span>
-  <p>El CO₂ sube y el planeta se calienta. Llega a 2050 con menos de <b>+1.5 °C</b> y sin que el mar suba 60 cm.</p>
-  <p>Mueve al personaje con la cruceta o tocando el mapa. El botón <b>A</b> sirve para actuar.</p>
-  <p>Lee los <b>paneles</b> y acierta las preguntas para ganar <b>🔬 Ciencia</b>. Úsala para instalar placas, plantar y aprobar medidas.</p>
-  <p>Empieza hablando con la profe.</p>
-  <button class="btn" data-act="close">¡Empezar!</button>`);
+const HELP=[
+ ['Tu misión',`<p>Es el año <b>2025</b> y eres guardián o guardiana de Cabo de Gata. La fábrica del pueblo quema combustibles y echa <b>CO₂</b>, un gas que atrapa el calor del Sol. Si la Tierra se calienta demasiado, sube el mar y llegan más sequías e incendios.</p>
+  <p>Tienes <b>25 años de juego</b> (unos <b>15 minutos</b>) para frenarlo.</p>
+  <div class="goal"><p><b>Ganas</b> si llegas a 2050 con menos de <b>+1.5 °C</b>.</p><p><b>Pierdes</b> si el mar sube <b>60 cm</b> y llega al pueblo.</p></div>`],
+ ['Lo que ves arriba',`<ul class="help">
+  <li><b>Año</b>Avanza solo. Cada año dura unos 36 segundos.</li>
+  <li><b>CO₂ ppm</b>Cuánto CO₂ hay en el aire. Si sube, sube la temperatura.</li>
+  <li><b>Temp.</b>Cuánto más calor hace que antes de que existieran las fábricas. No debe pasar de +1.5 °C.</li>
+  <li><b>Mar cm</b>Cuánto ha subido el mar. A los 60 cm se inunda el pueblo.</li>
+  <li><b>Ciencia 🔬</b>Tus puntos para actuar. Se ganan aprendiendo y se gastan en soluciones.</li></ul>`],
+ ['Cómo moverte',`<ul class="help">
+  <li><b>Moverte</b>Usa la cruceta o toca el sitio del mapa al que quieres ir.</li>
+  <li><b>Botón A</b>Habla con la profe, lee paneles, planta o entra en edificios. También puedes tocarlos directamente.</li>
+  <li><b>Cuatro zonas</b>Pueblo, Tabernas, Sorbas y la costa de Cabo de Gata. Pasa de una a otra por los huecos de los bordes. El minimapa de la esquina te dice dónde estás.</li>
+  <li><b>Señal naranja</b>Hay algo nuevo: un panel sin leer o un reto de la profe.</li></ul>`],
+ ['Ganar y gastar Ciencia',`<p><b>Para ganar 🔬:</b> lee los paneles y acierta su pregunta, haz los retos de la profe, cumple misiones, recoge basura (punto azul en el minimapa) y repasa rocas en la cueva de Sorbas. Además recibes 2 🔬 cada año.</p>
+  <ul class="help">
+  <li><b>Placas solares · 12 🔬</b>En los tejados del pueblo. La fábrica echa menos CO₂. ¡Es lo que más ayuda!</li>
+  <li><b>Árboles · 6 🔬 y posidonia · 7 🔬</b>En Tabernas y en la costa. Absorben CO₂.</li>
+  <li><b>Ayuntamiento</b>Medidas para <i>mitigar</i> (echar menos CO₂) y para <i>adaptarse</i> (protegerse de sequías y temporales).</li></ul>
+  <p>Empieza hablando con <b>la profe</b>: está en el pueblo, con una señal naranja.</p>`]
+];
+function intro(i=0){
+  const [t,b]=HELP[i],last=i===HELP.length-1;
+  modal(`<h2>${t}</h2><span class="tag">Cómo se juega · ${i+1} de ${HELP.length}</span>${b}
+  <div class="nav">${i>0?`<button class="opt" data-act="help" data-i="${i-1}">Atrás</button>`:''}${last?`<button class="btn" data-act="close">${S.t<1?'¡A jugar!':'Volver al juego'}</button>`:`<button class="btn" data-act="help" data-i="${i+1}">Siguiente</button>`}</div>`);
+}
+const TQ=[];
+function toast(m){if(TQ.includes(m))return;TQ.push(m);if(TQ.length>4)TQ.shift();if(!toast.busy)nextToast()}
+function nextToast(){
+  const t=$('toast'),m=TQ.shift();
+  if(!m){toast.busy=false;return}
+  toast.busy=true;t.textContent=m;t.classList.add('show');
+  setTimeout(()=>{t.classList.remove('show');setTimeout(nextToast,250)},2200);
+}
+function save(){
+  if(!S.player||S.over)return;
+  try{localStorage.setItem('cg_save',JSON.stringify(Object.assign({},S,{cardUrl:'',smoke:[],hold:null,path:[],after:null,paused:true,lastHint:''})))}catch(e){}
+}
+function dropSave(){try{localStorage.removeItem('cg_save')}catch(e){}}
+function tryResume(){
+  let sv=null;try{sv=JSON.parse(localStorage.getItem('cg_save')||'null')}catch(e){sv=null}
+  if(!sv||!sv.player||sv.over||!sv.cave||sv.year>=END_YEAR)return false;
+  S.resume=sv;
+  modal(`<h2>¿Seguimos?</h2><span class="tag">Partida a medias</span>
+  <p>Hay una partida sin terminar de <b>${esc(sv.player.nombre)}</b> (${esc(sv.player.grupo)}), en el año <b>${esc(sv.year)}</b>.</p>
+  <button class="btn" data-act="resume">Continuar partida</button>
+  <button class="opt" data-act="fresh">Soy otra persona: empezar de nuevo</button>`);
+  return true;
 }
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function showCard(key,again){
@@ -380,6 +428,8 @@ function questModal(){
   <p>Cada misión cumplida da +5 🔬. Cada año recibes +2 🔬 de subvención. Además, aparece basura por el mapa (un punto azul en el minimapa): recógela para ganar +1 🔬.</p>
   <p><b>Objetivo final:</b> llegar a 2050 por debajo de +1.5 °C. Ahora estás en +${temp().toFixed(1)} °C.</p>
   <div class="rocks">${[1,2,3,4,5].map(t=>`<span title="${S.found[t]?ROCKS[t].n:'?'}" style="${S.found[t]?'background:'+ROCKS[t].c:''}"></span>`).join('')}</div>
+  <p style="font-size:13px;color:var(--muted)">El juego está en pausa mientras esta ventana está abierta.</p>
+  <button class="opt" data-act="help" data-i="0">Cómo se juega</button>
   <button class="btn" data-act="close">${done?'Genial':'Seguir jugando'}</button>`);
 }
 function boardId(c,r){let n=0;const m=MAPS[S.sy][S.sx];for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)if(m[y][x]==='I'){if(x===c&&y===r)return BOARDS[S.sy][S.sx][n];n++}}
@@ -420,6 +470,7 @@ function setHint(){
   if(h!==S.lastHint){S.lastHint=h;$('hint').textContent=h}
 }
 function questHint(){
+  if(S.reto)return NAMES[S.sy][S.sx]+' · La profe tiene un reto para ti en el Pueblo';
   const q=QUESTS.find(q=>!S.qdone[q.id]);
   const need={solar:COST.solar,tree:COST.tree,pos:COST.pos,ayto:12}[q&&q.id];
   const falta=need&&S.sci<need?' · Te faltan '+(need-S.sci)+' 🔬':'';
@@ -621,7 +672,7 @@ function yearTick(){
   if(ev){const [t,why,res]=ev();refresh();modal(`<h2>${t}</h2><span class="tag">Noticia de ${S.year}</span><p>${why}</p><p><b>${res}</b></p><button class="btn" data-act="close">Entendido</button>`)}
 }
 function end(win,why){
-  S.over=true;S.paused=true;S.hold=null;S.path=[];
+  S.over=true;S.paused=true;S.hold=null;S.path=[];dropSave();
   const tp=temp(),mit=['bus','reci','ev'].filter(k=>S.pol[k]).length,ada=['agua','dunas'].filter(k=>S.pol[k]).length;
   const title=win?'¡Lo conseguiste!':(why==='sea'?'El mar llegó al pueblo':'Demasiado calor');
   const msg=win?'Llegaste a 2050 con el clima bajo control. Menos humo, más árboles y praderas de posidonia frenaron el calentamiento.'
@@ -787,13 +838,16 @@ function resize(){
   ctx.imageSmoothingEnabled=false;
 }
 new ResizeObserver(resize).observe($('wrap'));
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
+window.addEventListener('pagehide',save);
 window.addEventListener('resize',resize);
 
 let last=performance.now();
 function loop(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;
   if(!S.paused){
-    S.t+=dt;S.yt+=dt;S.ls+=dt;
+    S.t+=dt;S.yt+=dt;S.ls+=dt;S.sv=(S.sv||0)+dt;
+    if(S.sv>=5){S.sv=0;save()}
     if(S.ls>=30){S.ls-=30;if(S.litter.length<4)spawnLitter()}
     S.ppm=Math.max(380,S.ppm+rate()*dt/YEAR_SEC);
     if(sea()>=LOSE_SEA&&!S.over)end(false,'sea');
@@ -816,7 +870,7 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 if(window.__TEST__)window.__g={get S(){return S},yearTick,count,CARDS};
-newGame();setMode('world');askName();
+newGame();setMode('world');if(!tryResume())askName();
 requestAnimationFrame(loop);
 })();
 </script>
