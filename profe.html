@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Panel de la profe</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Silkscreen:wght@400;700&display=swap">
@@ -225,7 +226,7 @@ function render(){
   $('fGrupo').innerHTML='<option value="">Todos</option>'+groups.map(g=>'<option'+(g===cur?' selected':'')+'>'+esc(g)+'</option>').join('');
   const rows=view();
   $('aEmpty').hidden=rows.length>0;
-  $('aBody').innerHTML=rows.map(d=>{const n=nota(d);return '<tr data-s="'+esc(d.sid)+'"'+(sel===d.sid?' class="sel"':'')+'><td>'+esc(d.nombre)+(d.intento>1?' <small>(intento '+esc(d.intento)+')</small>':'')+'</td><td>'+esc(d.grupo)+'</td><td>'+estado(d)+'</td><td class="n">'+esc(d.year)+'</td><td class="n">+'+esc(d.temp)+'°</td><td class="n">'+n.ok+'/'+n.asked+'</td><td class="n">'+esc(d.quests)+'/6</td><td class="n">'+Math.round(d.real/60)+(rapida(d)?' <span class="flag">!</span>':'')+'</td><td class="n nota">'+(fin(d)?n.total.toFixed(1):'—')+'</td></tr>'}).join('');
+  $('aBody').innerHTML=rows.map(d=>{const n=nota(d);return '<tr data-s="'+esc(d.sid)+'"'+(sel===d.sid?' class="sel"':'')+'><td>'+esc(d.nombre)+(d.intento>1?' <small>(intento '+esc(d.intento)+')</small>':'')+'</td><td>'+esc(d.grupo)+'</td><td>'+estado(d)+'</td><td class="n">'+esc(d.year)+'</td><td class="n">+'+Number(d.temp).toFixed(1)+'°</td><td class="n">'+n.ok+'/'+n.asked+'</td><td class="n">'+esc(d.quests)+'/6</td><td class="n">'+Math.round(d.real/60)+(rapida(d)?' <span class="flag">!</span>':'')+'</td><td class="n nota">'+(fin(d)?n.total.toFixed(1):'—')+'</td></tr>'}).join('');
   const f=rows.filter(fin);const st=$('aStats');st.hidden=rows.length===0;
   if(rows.length){
     const media=f.length?f.reduce((s,d)=>s+nota(d).total,0)/f.length:0,gan=f.filter(d=>d.estado==='ganada').length;
