@@ -388,10 +388,11 @@ function npc(){
     ayto:'En el Ayuntamiento puedes aprobar medidas de mitigación y de adaptación. Necesitas las dos.',
     rocks:'Las cuevas de Sorbas (arriba a la derecha) sirven para repasar las rocas que ya estudiasteis.'};
   const tp=temp();
+  const extra=(S.year>=2028&&count('solar')+Object.keys(S.pol).length<3)?' La fábrica es la mayor fuente de CO₂ del pueblo: las placas y las medidas del Ayuntamiento la hacen emitir menos.':'';
   const state=tp>1.5?'Vamos tarde: ya estamos en +'+tp.toFixed(1)+' °C. Hay que bajar el CO₂.':'Vamos bien: estamos en +'+tp.toFixed(1)+' °C. Hay que mantenerlo.';
   modal(`<h2>La profe</h2><span class="tag">${q?'Siguiente misión':'Misiones completadas'}</span>
   <p>${q?'<b>'+q.t+'.</b> '+tips[q.id]:'¡Has completado todas las misiones! Ahora cuida el clima hasta 2050.'}</p>
-  <p>${state}</p><button class="btn" data-act="close">Vale</button>`);
+  <p>${state}${extra}</p><button class="btn" data-act="close">Vale</button>`);
 }
 
 /* ---------- movimiento ---------- */
