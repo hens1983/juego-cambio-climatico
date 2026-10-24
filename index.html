@@ -235,8 +235,19 @@ function makeCave(){
 function newGame(){
   S={year:2025,yt:0,t:0,ppm:420,sci:10,mode:'world',sx:0,sy:1,x:5,y:5,vx:5,vy:5,fx:0,fy:-1,
      hold:null,path:[],after:null,spots:{},read:{},pol:{},retoN:0,reto:false,warnSea:false,found:{},seen:{},qdone:{},cave:makeCave(),
-     ans:[],player:null,sid:'',t0:0,cardUrl:'',cardName:'',smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
+     ans:[],litter:[],ls:0,litterGot:0,player:null,sid:'',t0:0,cardUrl:'',cardName:'',smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
   S.spots['0,0,5,1']={k:'tree',dead:false,born:-9};
+  spawnLitter();spawnLitter();
+}
+const LITTER_FACTS=['Reciclar ahorra energía y emisiones de CO₂.','Un plástico en el mar tarda siglos en desaparecer.','Menos basura es menos CO₂ al fabricar y transportar.','Las bolsas que llegan al mar dañan la posidonia.','Separar los residuos también ayuda al clima.','Reutilizar es mejor que reciclar, y reciclar mejor que tirar.'];
+function spawnLitter(){
+  for(let k=0;k<40;k++){
+    const sx=Math.floor(Math.random()*2),sy=Math.floor(Math.random()*2),c=1+Math.floor(Math.random()*(COLS-2)),r=1+Math.floor(Math.random()*(ROWS-2));
+    if(MAPS[sy][sx][r][c]!=='.')continue;
+    if(S.litter.some(l=>l.sx===sx&&l.sy===sy&&l.c===c&&l.r===r))continue;
+    if(sx===S.sx&&sy===S.sy&&c===S.x&&r===S.y)continue;
+    S.litter.push({sx,sy,c,r});return;
+  }
 }
 const temp=()=>Math.max(1,1.1+(S.ppm-420)*0.012);
 const sea=()=>Math.max(0,Math.round((temp()-1.1)*60)-(S.pol.dunas?15:0));
@@ -284,13 +295,13 @@ function payload(estado,motivo){
   return {v:1,sid:S.sid,nombre:S.player.nombre,grupo:S.player.grupo,intento:S.player.intento,estado,motivo:motivo||'',
     t0:S.t0,real:Math.round((Date.now()-S.t0)/1000),year:S.year,ppm:Math.round(S.ppm),temp:+temp().toFixed(2),sea:sea(),
     solar:count('solar'),trees:count('tree'),pos:count('pos'),pol:Object.keys(S.pol),read:Object.keys(S.read).length,
-    quests:Object.keys(S.qdone).length,found:Object.keys(S.found).length,ans:S.ans};
+    quests:Object.keys(S.qdone).length,found:Object.keys(S.found).length,basura:S.litterGot,ans:S.ans};
 }
 function chk(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return h}
 async function makeCard(win,why){
   const p=payload(win?'ganada':'perdida',why),ok=p.ans.filter(a=>a.ok).length,asked=p.ans.length;
   try{await Promise.race([Promise.all([document.fonts.load("40px 'Silkscreen'"),document.fonts.load("700 30px 'Atkinson Hyperlegible'")]),new Promise(r=>setTimeout(r,1500))])}catch(e){}
-  const W=1080,H=1640,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const W=1080,H=1700,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
   const D=n=>n+"px 'Silkscreen','Courier New',monospace",B=n=>'700 '+n+"px 'Atkinson Hyperlegible',system-ui,sans-serif",R=n=>n+"px 'Atkinson Hyperlegible',system-ui,sans-serif";
   x.fillStyle='#1f1b24';x.fillRect(0,0,W,H);
   const rock=['#8a5a32','#d6cdb3','#ece9e0','#6d6572','#f2f0f0'],bs=60;
@@ -315,7 +326,7 @@ async function makeCard(win,why){
     x.fillStyle='#f4ecdc';x.font=D(38);x.fillText(t[0],tx+tw/2,yy+56);x.fillStyle='#b9ad9c';x.font=R(22);x.fillText(t[1],tx+tw/2,yy+92)});
   const ly=ty+290;x.textAlign='left';x.fillStyle='#f4ecdc';x.font=B(30);
   const mit=p.pol.filter(k=>['bus','reci','ev'].includes(k)).length,ada=p.pol.filter(k=>['agua','dunas'].includes(k)).length;
-  ['Preguntas acertadas: '+ok+' de '+asked,'Misiones cumplidas: '+p.quests+' de 6 · Paneles leídos: '+p.read+' de 8','Placas solares: '+p.solar+' · Árboles: '+p.trees+' · Posidonia: '+p.pos,'Medidas de mitigación: '+mit+' · de adaptación: '+ada].forEach((t,i)=>{x.fillText(t,120,ly+i*52)});
+  ['Preguntas acertadas: '+ok+' de '+asked,'Misiones cumplidas: '+p.quests+' de 6 · Paneles leídos: '+p.read+' de 8','Placas solares: '+p.solar+' · Árboles: '+p.trees+' · Posidonia: '+p.pos,'Medidas de mitigación: '+mit+' · de adaptación: '+ada,'Basura recogida: '+p.basura].forEach((t,i)=>{x.fillText(t,120,ly+i*52)});
   x.textAlign='center';
   const d=new Date(),fecha=d.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}),hora=d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
   const code=chk([p.nombre,p.grupo,p.t0,p.year,p.ppm,p.temp,ok,asked,p.solar,p.trees,p.pos,p.pol.join('.')].join('|')+'|cg1').toString(36).toUpperCase().padStart(7,'0');
@@ -366,7 +377,7 @@ function questModal(){
   const done=QUESTS.every(q=>S.qdone[q.id]);
   modal(`<h2>Misiones</h2>
   <ul class="quests">${QUESTS.map(q=>`<li class="${S.qdone[q.id]?'done':''}"><span class="ck">${S.qdone[q.id]?'[x]':'[ ]'}</span><span>${q.t}<small>${Math.min(q.n(),q.g)}/${q.g}</small></span></li>`).join('')}</ul>
-  <p>Cada misión cumplida da +5 🔬.</p>
+  <p>Cada misión cumplida da +5 🔬. Cada año recibes +2 🔬 de subvención. Además, aparece basura por el mapa (un punto azul en el minimapa): recógela para ganar +1 🔬.</p>
   <p><b>Objetivo final:</b> llegar a 2050 por debajo de +1.5 °C. Ahora estás en +${temp().toFixed(1)} °C.</p>
   <div class="rocks">${[1,2,3,4,5].map(t=>`<span title="${S.found[t]?ROCKS[t].n:'?'}" style="${S.found[t]?'background:'+ROCKS[t].c:''}"></span>`).join('')}</div>
   <button class="btn" data-act="close">${done?'Genial':'Seguir jugando'}</button>`);
@@ -463,7 +474,7 @@ function npc(){
   S.seen.talked=true;
   if(S.reto&&S.retoN<RETOS.length){S.reto=false;showCard('reto'+(S.retoN++));return}
   const q=QUESTS.find(q=>!S.qdone[q.id]);
-  const tips={read:'Lee los paneles informativos repartidos por el mapa. Si aciertas la pregunta ganas 🔬.',
+  const tips={read:'Lee los paneles informativos repartidos por el mapa. Si aciertas la pregunta ganas 🔬. Si te quedas sin Ciencia, recoge la basura que aparece por el mapa.',
     solar:'Las placas se instalan en los tejados del pueblo. Cuestan '+COST.solar+' 🔬 y reducen las emisiones de la fábrica.',
     tree:'En Tabernas (arriba a la izquierda) hay parcelas de tierra para plantar árboles. Absorben CO₂.',
     pos:'En la costa de Cabo de Gata (abajo a la derecha) hay praderas de posidonia en aguas poco profundas.',
@@ -691,6 +702,11 @@ function objW(c,r,x){
     rect(X+T*.54,Y-T*.55,T*.3,T*.1,'#2f8f3a');rect(X+T*.54,Y-T*.45,T*.3,T*.1,'#fff');rect(X+T*.54,Y-T*.35,T*.3,T*.1,'#2f8f3a');
   }
 }
+function drawLitter(l){
+  const X=l.c*T,Y=l.r*T+Math.sin(S.t*3+l.c)*T*.03;
+  rect(X+T*.36,Y+T*.34,T*.28,T*.46,'#7fd0ff');rect(X+T*.42,Y+T*.2,T*.16,T*.16,'#e8e8e8');rect(X+T*.4,Y+T*.46,T*.2,T*.1,'#4a9fd8');
+  if(Math.floor(S.t*2+l.c)%2===0)rect(X+T*.66,Y+T*.28,T*.1,T*.1,'#fff');
+}
 function drawPlayer(){
   const X=S.vx*T,Y=S.vy*T,step=(Math.abs(S.vx-S.x)+Math.abs(S.vy-S.y))>0.05&&Math.floor(S.t*10)%2?T*.04:0;
   rect(X+T*.28,Y+T*.46,T*.44,T*.4+step,'#3b6fd6');
@@ -709,6 +725,7 @@ function drawWorld(dt){
   const pr=Math.round(S.vy);
   for(let r=0;r<ROWS;r++){
     for(let c=0;c<COLS;c++)objW(c,r,MAPS[S.sy][S.sx][r][c]);
+    for(const l of S.litter)if(l.sx===S.sx&&l.sy===S.sy&&l.r===r)drawLitter(l);
     if(r===pr)drawPlayer();
   }
   if(S.sx===0&&S.sy===1){
@@ -728,6 +745,7 @@ function drawMini(){
     const cur=sx===S.sx&&sy===S.sy;
     ctx.fillStyle=cur?'#f2a93b':'rgba(20,16,26,.7)';ctx.fillRect(x0+sx*m,y0+sy*m,m-2,m-2);
     ctx.fillStyle=cur?'#2a1d08':'#d9cfbf';ctx.fillText(L[sy][sx],x0+sx*m+m/2-1,y0+sy*m+m/2);
+    if(S.litter.some(l=>l.sx===sx&&l.sy===sy)){ctx.fillStyle='#7fd0ff';ctx.fillRect(x0+sx*m+m-m*.34,y0+sy*m+m*.04,m*.26,m*.26)}
   }
 }
 function drawCaveTile(c,r,t){
@@ -761,7 +779,8 @@ let last=performance.now();
 function loop(now){
   const dt=Math.min(.1,(now-last)/1000);last=now;
   if(!S.paused){
-    S.t+=dt;S.yt+=dt;
+    S.t+=dt;S.yt+=dt;S.ls+=dt;
+    if(S.ls>=30){S.ls-=30;if(S.litter.length<4)spawnLitter()}
     S.ppm=Math.max(380,S.ppm+rate()*dt/YEAR_SEC);
     if(sea()>=LOSE_SEA&&!S.over)end(false,'sea');
     if(S.yt>=YEAR_SEC){S.yt-=YEAR_SEC;yearTick()}else refresh();
@@ -769,6 +788,8 @@ function loop(now){
       const sp=7*dt;
       for(const k of ['x','y']){const v='v'+k,d=S[k]-S[v];S[v]=Math.abs(d)<=sp?S[k]:S[v]+Math.sign(d)*sp}
       if(S.vx===S.x&&S.vy===S.y){
+        const li=S.litter.findIndex(l=>l.sx===S.sx&&l.sy===S.sy&&l.c===S.x&&l.r===S.y);
+        if(li>=0){S.litter.splice(li,1);S.sci+=1;S.litterGot++;toast('+1 🔬 Basura recogida. '+LITTER_FACTS[Math.floor(Math.random()*LITTER_FACTS.length)]);refresh()}
         if(S.enter)enterCave();
         else if(S.hold)tryMove(S.hold[0],S.hold[1]);
         else if(S.path.length){const d=S.path.shift();if(!tryMove(d[0],d[1]))S.path=[]}
