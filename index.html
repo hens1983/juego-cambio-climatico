@@ -118,7 +118,7 @@ textarea.code{font:12px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--te
 (function(){
 const COLS=10, ROWS=12, CAVE_ROWS=14, YEAR_SEC=36, END_YEAR=2050, LOSE_SEA=60;
 /* Equilibrio: CO₂ en ppm al año, precios en 🔬 y ritmo de la basura. En pruebas se puede sustituir con window.__BAL__. */
-const BAL=Object.assign({base:6,solar:1,bus:.7,reci:.5,ev:.7,tree:.4,pos:.5,floor:420,litterSec:20,litterMax:5,stipend:2,costMul:1},window.__TEST__&&window.__BAL__||{});
+const BAL=Object.assign({base:6,solar:1,bus:.7,reci:.5,ev:.7,tree:.3,pos:.4,floor:420,litterSec:20,litterMax:5,stipend:2,costMul:1.3},window.__TEST__&&window.__BAL__||{});
 const price=v=>Math.round(v*BAL.costMul);
 const COST={tree:price(6),solar:price(12),pos:price(7)};
 const ppmTxt=v=>String(v).replace('.',',');
@@ -186,7 +186,11 @@ const RETOS=[
  {fact:'¡Reto de la profe!',q:'¿Cuál es una medida de adaptación?',o:['Guardar agua para las sequías','Quemar más gas','Ignorar el problema'],a_:0},
  {fact:'¡Reto de la profe!',q:'¿Por qué es mala la deforestación para el clima?',o:['Hay menos árboles que absorban CO₂','Hace que llueva más','Sube la sal del mar'],a_:0},
  {fact:'¡Reto de la profe!',q:'¿Qué puedes hacer tú para ayudar?',o:['Ir andando o en bici y ahorrar energía','Dejar las luces encendidas','Tirar plástico al mar'],a_:0},
- {fact:'¡Reto de la profe!',q:'El límite de +1.5 °C se propone para…',o:['Frenar los peores efectos del calentamiento','Medir la temperatura del aula','Calcular la altura de las olas'],a_:0}
+ {fact:'¡Reto de la profe!',q:'El límite de +1.5 °C se propone para…',o:['Frenar los peores efectos del calentamiento','Medir la temperatura del aula','Calcular la altura de las olas'],a_:0},
+ {fact:'¡Reto de la profe!',q:'¿Qué es la huella de carbono?',o:['El CO₂ que emitimos con lo que hacemos','La marca de un zapato en la arena','Un tipo de roca'],a_:0},
+ {fact:'¡Reto de la profe!',q:'¿Qué forma de ir al instituto emite menos CO₂?',o:['Ir andando o en bici','Ir solo en coche','Ir en moto'],a_:0},
+ {fact:'¡Reto de la profe!',q:'¿Por qué en Almería hay desaladoras?',o:['Porque llueve poco y falta agua dulce','Porque el mar está muy caliente','Para fabricar sal de mesa'],a_:0},
+ {fact:'¡Reto de la profe!',q:'Además del CO₂, ¿qué gas de la ganadería calienta mucho la atmósfera?',o:['El metano','El oxígeno','El helio'],a_:0}
 ];
 RETOS.forEach((r,i)=>{CARDS['reto'+i]=Object.assign({n:'Reto de la profe',kind:'Reto',c:'#7bd88f',rw:4},r)});
 const BOARDS=[[['desert','agua'],['clima','mitig']],[['gei','causas'],['mar','oceano']]];
@@ -681,7 +685,7 @@ const EVENTS={
 };
 function yearTick(){
   S.year++;S.sci+=BAL.stipend;
-  if(S.year>=2028&&(S.year-2028)%3===0&&S.retoN<RETOS.length){S.reto=true;toast('La profe tiene un reto para ti')}
+  if(S.year>=2027&&(S.year-2027)%2===0&&S.retoN<RETOS.length){S.reto=true;toast('La profe tiene un reto para ti')}
   const tr=count('tree'),ps=count('pos'),tp=temp();
   if(S.year<END_YEAR&&(S.year-2025)%5===0)report('jugando');
   if(!S.pol.agua&&tp>1.8&&tr>0&&Math.random()<0.35){killOne('tree');toast('Sequía: se ha secado un árbol en Tabernas')}
