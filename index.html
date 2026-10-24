@@ -28,7 +28,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:15
 .stat small{display:block;font-size:10.5px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
 .stat.warn b{color:var(--bad)}
 .stat.ok b{color:var(--good)}
-.bar{height:10px;background:var(--panel);border:2px solid var(--line);position:relative}
+.bar span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;text-shadow:0 1px 2px #000;font-variant-numeric:tabular-nums}
+.bar{height:16px;background:var(--panel);border:2px solid var(--line);position:relative}
 .bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--accent)}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--text);min-height:34px}
 #hint{min-width:0;flex:1}
@@ -78,7 +79,7 @@ canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touc
     <div class="stat" id="stSea"><b id="sSea">0</b><small>Mar cm</small></div>
     <div class="stat"><b id="sSci">8</b><small>Ciencia</small></div>
   </div>
-  <div class="bar" aria-label="Progreso hasta 2050"><i id="prog"></i></div>
+  <div class="bar" aria-label="Progreso hasta 2050"><i id="prog"></i><span id="progT"></span></div>
   <div class="row"><span id="hint"></span><button class="mini" id="bQuest">Misiones</button></div>
   <div id="wrap"><canvas id="cv" aria-label="Mapa de Almería"></canvas></div>
   <div class="ctl" id="ctlWorld">
@@ -236,25 +237,26 @@ $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');i
 
 function intro(){
   modal(`<h2>Guardianes de Cabo de Gata</h2>
-  <span class="tag">Misión 2025 → 2050 · unos 15 minutos</span>
-  <p>El CO₂ de la atmósfera sube y el planeta se calienta. Tu misión: llegar a 2050 con menos de <b>+1.5 °C</b> de calentamiento y sin que el mar suba 60 cm.</p>
-  <p><b>Muévete</b> con la cruceta o tocando el mapa. Pulsa <b>A</b> para actuar.</p>
-  <p>Lee los <b>paneles informativos</b> y responde para ganar <b>Ciencia 🔬</b>. Con ella instalas placas solares, plantas árboles y posidonia, y apruebas medidas en el Ayuntamiento.</p>
-  <p>Habla primero con la profe. Las cuevas de Sorbas sirven para repasar geología.</p>
+  <span class="tag">2025 → 2050 · unos 15 minutos</span>
+  <p>El CO₂ sube y el planeta se calienta. Llega a 2050 con menos de <b>+1.5 °C</b> y sin que el mar suba 60 cm.</p>
+  <p>Mueve al personaje con la cruceta o tocando el mapa. El botón <b>A</b> sirve para actuar.</p>
+  <p>Lee los <b>paneles</b> y acierta las preguntas para ganar <b>🔬 Ciencia</b>. Úsala para instalar placas, plantar y aprobar medidas.</p>
+  <p>Empieza hablando con la profe.</p>
   <button class="btn" data-act="close">¡Empezar!</button>`);
 }
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function showCard(key,again){
   const R=CARDS[key];
   modal(`<div class="head"><div class="sw" style="background:${R.c}"></div><div><h2>${R.n}</h2></div></div>
   <span class="tag">${R.kind}</span>
   <p>${R.fact}</p>
   ${again?'<button class="btn" data-act="close">Seguir</button>':`<p><b>${R.q}</b></p>
-  <div class="opts">${R.o.map((o,i)=>`<button class="opt" data-act="opt" data-i="${i}" data-k="${key}">${o}</button>`).join('')}</div>
+  <div class="opts">${shuffle(R.o.map((o,i)=>i)).map(i=>`<button class="opt" data-act="opt" data-i="${i}" data-k="${key}">${R.o[i]}</button>`).join('')}</div>
   <div id="fb"></div>`}`);
 }
 function answer(b){
   const key=b.dataset.k,R=CARDS[key],i=+b.dataset.i,ok=i===R.a_,rw=R.rw;
-  document.querySelectorAll('.opt').forEach((o,j)=>{o.disabled=true;if(j===R.a_)o.classList.add('right')});
+  document.querySelectorAll('.opt').forEach(o=>{o.disabled=true;if(+o.dataset.i===R.a_)o.classList.add('right')});
   if(!ok)b.classList.add('wrong');
   if(ok)S.sci+=rw;
   $('fb').innerHTML=`<p>${ok?'¡Correcto! +'+rw+' 🔬':'Casi. La respuesta correcta es: <b>'+R.o[R.a_]+'</b>.'}</p><button class="btn" data-act="close" style="margin-top:10px;width:100%">Seguir</button>`;
@@ -301,15 +303,21 @@ function refresh(){
   $('stCo2').className='stat'+(S.ppm>450?' warn':'');
   $('stSea').className='stat'+(sea()>=40?' warn':'');
   $('prog').style.width=Math.min(100,((S.year-2025)+S.yt/YEAR_SEC)/(END_YEAR-2025)*100)+'%';
+  const left=Math.max(0,Math.round((END_YEAR-S.year)*YEAR_SEC-S.yt));
+  $('progT').textContent='Quedan '+Math.floor(left/60)+':'+String(left%60).padStart(2,'0');
 }
 function setHint(){
   let h;
   if(S.mode==='cave')h='Repaso de geología: excava y descubre las rocas.';
   else{
     const a=pickAction();
-    h=a?hintFor(a):NAMES[S.sy][S.sx]+'. Toca el mapa o usa la cruceta.';
+    h=a?hintFor(a):questHint();
   }
   if(h!==S.lastHint){S.lastHint=h;$('hint').textContent=h}
+}
+function questHint(){
+  const q=QUESTS.find(q=>!S.qdone[q.id]);
+  return NAMES[S.sy][S.sx]+' · '+(q?q.t+' ('+Math.min(q.n(),q.g)+'/'+q.g+')':'Misiones hechas. Cuida el clima hasta 2050.');
 }
 function hintFor(a){
   return {tree:'A: plantar árbol ('+COST.tree+' 🔬)',pos:'A: sembrar posidonia ('+COST.pos+' 🔬)',solar:'A: instalar placa solar ('+COST.solar+' 🔬)',
@@ -607,8 +615,18 @@ function drawWorld(dt){
     for(const p of S.smoke){if(!S.paused){p.l+=dt;p.y-=dt*T*.7;p.x+=dt*T*.15}
       ctx.fillStyle='rgba(70,66,76,'+(0.7*(1-p.l/3.2)).toFixed(2)+')';const s=T*(.3+p.l*.25);ctx.fillRect(p.x-s/2,p.y-s/2,s,s)}
   }
+  drawMini();
   const haze=Math.min(1,Math.max(0,(S.ppm-420)/90));
   if(haze>0){ctx.fillStyle='rgba(214,140,50,'+(haze*.24).toFixed(3)+')';ctx.fillRect(0,0,COLS*T,ROWS*T)}
+}
+function drawMini(){
+  const m=T*.55,x0=COLS*T-2*m-6,y0=6,L=[['T','S'],['P','C']];
+  ctx.font='700 '+Math.round(m*.7)+'px Silkscreen,monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  for(let sy=0;sy<2;sy++)for(let sx=0;sx<2;sx++){
+    const cur=sx===S.sx&&sy===S.sy;
+    ctx.fillStyle=cur?'#f2a93b':'rgba(20,16,26,.7)';ctx.fillRect(x0+sx*m,y0+sy*m,m-2,m-2);
+    ctx.fillStyle=cur?'#2a1d08':'#d9cfbf';ctx.fillText(L[sy][sx],x0+sx*m+m/2-1,y0+sy*m+m/2);
+  }
 }
 function drawCaveTile(c,r,t){
   const x=c*T,y=r*T;
@@ -660,7 +678,7 @@ function loop(now){
   draw(dt);
   requestAnimationFrame(loop);
 }
-window.__g={get S(){return S},yearTick,count};
+window.__g={get S(){return S},yearTick,count,CARDS};
 newGame();setMode('world');intro();
 requestAnimationFrame(loop);
 })();
