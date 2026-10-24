@@ -392,7 +392,7 @@ function aytoModal(msg){
 }
 function buy(id){
   const p=POLICIES.find(x=>x.id===id);
-  if(S.sci<p.cost)return aytoModal('Te faltan '+(p.cost-S.sci)+' 🔬.');
+  if(S.sci<p.cost)return aytoModal('Te faltan '+(p.cost-S.sci)+' 🔬. Lee paneles, haz los retos de la profe o recoge basura por el mapa.');
   S.sci-=p.cost;S.pol[id]=true;checkQuests();refresh();aytoModal('Medida aprobada: '+p.n+'.');
 }
 $('bQuest').addEventListener('click',()=>{if(!S.paused)questModal()});
@@ -421,7 +421,9 @@ function setHint(){
 }
 function questHint(){
   const q=QUESTS.find(q=>!S.qdone[q.id]);
-  return NAMES[S.sy][S.sx]+' · '+(q?q.t+' ('+Math.min(q.n(),q.g)+'/'+q.g+')':'Misiones hechas. Cuida el clima hasta 2050.');
+  const need={solar:COST.solar,tree:COST.tree,pos:COST.pos,ayto:12}[q&&q.id];
+  const falta=need&&S.sci<need?' · Te faltan '+(need-S.sci)+' 🔬':'';
+  return NAMES[S.sy][S.sx]+' · '+(q?q.t+' ('+Math.min(q.n(),q.g)+'/'+q.g+')'+falta:'Misiones hechas. Cuida el clima hasta 2050.');
 }
 function hintFor(a){
   return {tree:'A: plantar árbol ('+COST.tree+' 🔬)',pos:'A: sembrar posidonia ('+COST.pos+' 🔬)',solar:'A: instalar placa solar ('+COST.solar+' 🔬)',
@@ -464,7 +466,7 @@ function interact(a){
   if(a.a==='board'){const id=boardId(a.c,a.r),again=!!S.read[id];S.read[id]=true;checkQuests();showCard(id,again);return}
   if(a.a==='ayto')return aytoModal();
   const k=a.a;
-  if(S.sci<COST[k]){toast('Te faltan '+(COST[k]-S.sci)+' 🔬. Lee paneles y completa misiones.');return}
+  if(S.sci<COST[k]){toast('Te faltan '+(COST[k]-S.sci)+' 🔬. Lee paneles, haz los retos de la profe o recoge basura.');return}
   S.sci-=COST[k];S.spots[sk(a.c,a.r)]={k,dead:false,born:S.t};
   toast(k==='tree'?'Árbol plantado: absorbe CO₂':k==='solar'?'Placa solar: la fábrica emite menos':'Posidonia sembrada: absorbe CO₂');
   checkQuests();refresh();
@@ -481,11 +483,23 @@ function npc(){
     ayto:'En el Ayuntamiento puedes aprobar medidas de mitigación y de adaptación. Necesitas las dos.',
     rocks:'Las cuevas de Sorbas (arriba a la derecha) sirven para repasar las rocas que ya estudiasteis.'};
   const tp=temp();
+  const need={solar:COST.solar,tree:COST.tree,pos:COST.pos,ayto:12}[q&&q.id];
+  let ganar='';
+  if(need&&S.sci<need){
+    const op=[];
+    const pan=8-Object.keys(S.read).length,roc=5-Object.keys(S.found).length,bas=S.litter.length;
+    if(pan>0)op.push('leer los '+pan+' paneles que te faltan');
+    if(S.reto)op.push('hacer mi reto (ahora mismo tengo uno)');
+    if(roc>0)op.push('repasar '+roc+' roca'+(roc>1?'s':'')+' en las cuevas de Sorbas');
+    if(bas>0)op.push('recoger la basura del mapa (hay '+bas+', mira el punto azul del minimapa)');
+    op.push('esperar: cada año recibes 2 🔬');
+    ganar=' Para esa misión necesitas '+need+' 🔬 y tienes '+S.sci+'. Puedes ganar más: '+op.join('; ')+'.';
+  }
   const extra=(S.year>=2028&&count('solar')+Object.keys(S.pol).length<3)?' La fábrica es la mayor fuente de CO₂ del pueblo: las placas y las medidas del Ayuntamiento la hacen emitir menos.':'';
   const state=tp>1.5?'Vamos tarde: ya estamos en +'+tp.toFixed(1)+' °C. Hay que bajar el CO₂.':'Vamos bien: estamos en +'+tp.toFixed(1)+' °C. Hay que mantenerlo.';
   modal(`<h2>La profe</h2><span class="tag">${q?'Siguiente misión':'Misiones completadas'}</span>
   <p>${q?'<b>'+q.t+'.</b> '+tips[q.id]:'¡Has completado todas las misiones! Ahora cuida el clima hasta 2050.'}</p>
-  <p>${state}${extra}</p><button class="btn" data-act="close">Vale</button>`);
+  <p>${state}${extra}${ganar}</p><button class="btn" data-act="close">Vale</button>`);
 }
 
 /* ---------- movimiento ---------- */
