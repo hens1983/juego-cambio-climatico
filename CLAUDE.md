@@ -11,10 +11,12 @@ Juego educativo en un solo archivo (`index.html`, sin dependencias) para **1º d
 - Tutorial de 4 pantallas al empezar (misión, marcador, controles, Ciencia), que se puede volver a abrir desde Misiones.
 - La partida se guarda sola en el navegador cada 5 s y al salir; al volver se ofrece continuarla o empezar como otra persona (tablets compartidas: el nombre no se rellena solo).
 - Los avisos van en cola para que no se pisen.
-- Al empezar el alumno escribe nombre y grupo. Al terminar se genera un **certificado PNG** descargable (nombre, resultado, aciertos, código). No se guardan datos en ningún servidor.
+- Al empezar el alumno escribe nombre y grupo. Al terminar se genera un **certificado PNG** descargable (nombre, resultado, aciertos, código).
+- **Informe a la profe:** si el juego se abre con el enlace de clase (`#c=` con la URL de la hoja y el grupo), envía la partida a una Hoja de Google de la profe al empezar, cada 5 años de juego y al terminar (misma fila por partida, `sid`). `profe.html` muestra la tabla, la ficha de cada alumno, CSV y una nota orientativa. El servidor es `apps-script/Code.gs` (Apps Script, `doPost` guarda y `doGet` con clave lee). Sin enlace de clase no se envía nada (modo práctica).
 
 ## Decisiones tomadas
-- Sin servidor ni panel de administrador: la profe pidió solo que cada alumno se registre y descargue una imagen como prueba.
+- Primero se quitó el panel (bastaba el certificado); después el usuario pidió recuperarlo para tener trazabilidad. Se mantienen las dos cosas.
+- La integración con Google se probó con un servidor que imita al Apps Script, nunca contra Google de verdad. Si falla, revisar CORS y la redirección de `script.google.com` (el juego reintenta con `mode:'no-cors'`).
 - Se publica con **GitHub Pages** desde `main` (`https://hens1983.github.io/juego-cambio-climatico/`). El repositorio tiene que ser público para eso con una cuenta gratuita.
 - `index.html` es un documento completo. La versión publicada como Artifact de claude.ai se genera quitando `<!doctype>`, `<html>`, `<head>` y `<body>` (el Artifact no permite descargas, así que allí el botón de la imagen no funciona).
 

@@ -217,6 +217,9 @@ const QUESTS=[
  {id:'ayto',t:'Aprueba 2 medidas en el Ayuntamiento',g:2,n:()=>Object.keys(S.pol).length},
  {id:'rocks',t:'Repasa 3 rocas en las cuevas de Sorbas',g:3,n:()=>Object.keys(S.found).length}
 ];
+/* Enlace de clase: #c=<base64 de {u: URL de la hoja de la profe, g: grupo}> */
+let CFG={};
+try{const m=/#c=([A-Za-z0-9_-]+)/.exec(location.hash);if(m){const b=m[1].replace(/-/g,'+').replace(/_/g,'/');CFG=JSON.parse(decodeURIComponent(escape(atob(b))))}}catch(e){CFG={}}
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
@@ -240,7 +243,7 @@ function makeCave(){
 function newGame(){
   S={year:2025,yt:0,t:0,ppm:420,sci:10,mode:'world',sx:0,sy:1,x:5,y:5,vx:5,vy:5,fx:0,fy:-1,
      hold:null,path:[],after:null,spots:{},read:{},pol:{},retoN:0,reto:false,warnSea:false,found:{},seen:{},qdone:{},cave:makeCave(),
-     ans:[],litter:[],ls:0,litterGot:0,player:null,sid:'',t0:0,cardUrl:'',cardName:'',smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
+     ans:[],sendStatus:'',litter:[],ls:0,litterGot:0,player:null,sid:'',t0:0,cardUrl:'',cardName:'',smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
   S.spots['0,0,5,1']={k:'tree',dead:false,born:-9};
   spawnLitter();spawnLitter();
 }
@@ -272,10 +275,10 @@ $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');i
   if(a==='close')closeModal();
   else if(a==='start')startPlayer();
   else if(a==='dl')download();
-  else if(a==='again'){const pl=Object.assign({},S.player,{intento:S.player.intento+1});newGame();S.player=pl;newSession();$('modal').hidden=true;setMode('world');S.paused=false}
+  else if(a==='again'){const pl=Object.assign({},S.player,{intento:S.player.intento+1});newGame();S.player=pl;newSession();report('jugando');$('modal').hidden=true;setMode('world');S.paused=false}
   else if(a==='opt')answer(b);
   else if(a==='help')intro(+b.dataset.i);
-  else if(a==='resume'){const sv=S.resume;S=sv;S.paused=false;S.lastHint='';$('modal').hidden=true;setMode(S.mode);toast('Partida recuperada: año '+S.year)}
+  else if(a==='resume'){const sv=S.resume;S=sv;S.paused=false;S.lastHint='';$('modal').hidden=true;setMode(S.mode);report('jugando');toast('Partida recuperada: año '+S.year)}
   else if(a==='fresh'){dropSave();newGame();setMode('world');askName()}
   else if(a==='buy')buy(b.dataset.id);
 });
@@ -283,19 +286,19 @@ $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');i
 function askName(){
   let g='';try{g=localStorage.getItem('cg_g')||''}catch(e){}
   modal(`<h2>¿Quién juega?</h2><span class="tag">Actividad de clase</span>
-  <p>Escribe tu nombre. Aparecerá en el certificado que podrás descargar cuando termines.</p>
+  <p>Escribe tu nombre. ${CFG.u?'Tu profe verá tu nombre y cómo te va la partida.':'Aparecerá en el certificado que podrás descargar cuando termines.'}</p>
   <div><label class="lb" for="pNombre">Nombre y apellido</label><input class="in" id="pNombre" maxlength="40" autocomplete="off"></div>
-  <div><label class="lb" for="pGrupo">Curso y grupo (por ejemplo 1º A)</label><input class="in" id="pGrupo" maxlength="12" autocomplete="off" value="${esc(g)}"></div>
+  ${CFG.g?`<p>Grupo: <b>${esc(CFG.g)}</b></p>`:`<div><label class="lb" for="pGrupo">Curso y grupo (por ejemplo 1º A)</label><input class="in" id="pGrupo" maxlength="12" autocomplete="off" value="${esc(g)}"></div>`}
   <p class="err" id="pErr" hidden></p>
   <button class="btn" data-act="start">Continuar</button>`);
 }
 function startPlayer(){
-  const n=$('pNombre').value.replace(/\s+/g,' ').trim(),g=$('pGrupo').value.replace(/\s+/g,' ').trim();
+  const n=$('pNombre').value.replace(/\s+/g,' ').trim(),g=CFG.g||$('pGrupo').value.replace(/\s+/g,' ').trim();
   const err=$('pErr');
   if(n.length<3||!/\s|.{6,}/.test(n)){err.textContent='Escribe tu nombre y tu apellido.';err.hidden=false;return}
   if(!g){err.textContent='Escribe tu curso y grupo.';err.hidden=false;return}
   let it=1;try{localStorage.setItem('cg_n',n);localStorage.setItem('cg_g',g);const k='cg_i_'+n.toLowerCase()+'|'+g.toLowerCase();it=(+localStorage.getItem(k)||0)+1;localStorage.setItem(k,it)}catch(e){}
-  S.player={nombre:n,grupo:g,intento:it};newSession();intro();
+  S.player={nombre:n,grupo:g,intento:it};newSession();report('jugando');intro();
 }
 function newSession(){S.sid=Date.now().toString(36)+Math.random().toString(36).slice(2,8);S.t0=Date.now();S.ans=[]}
 function payload(estado,motivo){
@@ -303,6 +306,20 @@ function payload(estado,motivo){
     t0:S.t0,real:Math.round((Date.now()-S.t0)/1000),year:S.year,ppm:Math.round(S.ppm),temp:+temp().toFixed(2),sea:sea(),
     solar:count('solar'),trees:count('tree'),pos:count('pos'),pol:Object.keys(S.pol),read:Object.keys(S.read).length,
     quests:Object.keys(S.qdone).length,found:Object.keys(S.found).length,basura:S.litterGot,ans:S.ans};
+}
+async function send(p){
+  if(!CFG.u)return 'sin';
+  const o={method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)};
+  try{const r=await fetch(CFG.u,o);const j=await r.json();return j&&j.ok?'ok':'fallo'}
+  catch(e){try{await fetch(CFG.u,Object.assign({mode:'no-cors'},o));return 'enviado'}catch(e2){return 'fallo'}}
+}
+function report(estado,motivo){
+  if(!S.player||!CFG.u)return;
+  send(payload(estado,motivo)).then(r=>{S.sendStatus=r;showSend()});
+}
+function showSend(){
+  const m=$('sendMsg');if(!m)return;
+  m.textContent={ok:'Resultado enviado a tu profe.',enviado:'Resultado enviado a tu profe.',fallo:'No se pudo enviar el resultado. Descarga el certificado y entrégaselo a tu profe.'}[S.sendStatus]||'Enviando resultado a tu profe…';
 }
 function chk(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return h}
 async function makeCard(win,why){
@@ -661,6 +678,7 @@ function yearTick(){
   S.year++;S.sci+=2;
   if(S.year>=2028&&(S.year-2028)%3===0&&S.retoN<RETOS.length){S.reto=true;toast('La profe tiene un reto para ti')}
   const tr=count('tree'),ps=count('pos'),tp=temp();
+  if(S.year<END_YEAR&&(S.year-2025)%5===0)report('jugando');
   if(!S.pol.agua&&tp>1.8&&tr>0&&Math.random()<0.35){killOne('tree');toast('Sequía: se ha secado un árbol en Tabernas')}
   else if(tp>1.9&&ps>0&&Math.random()<0.3){killOne('pos');toast('Ola de calor marina: se ha muerto posidonia')}
   const f=floodStep();if(f>S.lastFlood){S.lastFlood=f;toast('El mar sube: la playa se estrecha')}
@@ -673,6 +691,7 @@ function yearTick(){
 }
 function end(win,why){
   S.over=true;S.paused=true;S.hold=null;S.path=[];dropSave();
+  S.sendStatus='';report(win?'ganada':'perdida',why);
   const tp=temp(),mit=['bus','reci','ev'].filter(k=>S.pol[k]).length,ada=['agua','dunas'].filter(k=>S.pol[k]).length;
   const title=win?'¡Lo conseguiste!':(why==='sea'?'El mar llegó al pueblo':'Demasiado calor');
   const msg=win?'Llegaste a 2050 con el clima bajo control. Menos humo, más árboles y praderas de posidonia frenaron el calentamiento.'
@@ -682,10 +701,11 @@ function end(win,why){
   <div><b>+${tp.toFixed(1)} °C</b>temperatura</div>
   <div><b>${count('solar')}</b>placas solares</div><div><b>${count('tree')+count('pos')}</b>árboles y posidonia vivos</div><div><b>${mit}</b>medidas de mitigación</div><div><b>${ada}</b>medidas de adaptación</div></div>
   <p><b>Para comentar en clase:</b> ¿qué cambió en la costa durante tu partida y qué decisión habría cambiado el resultado?</p>
+  ${CFG.u?'<p id="sendMsg" style="font-size:14px;font-weight:700"></p>':''}
   <p style="font-size:14px;color:var(--muted)">Este es tu certificado. Descárgalo y entrégaselo a tu profe.</p>
   <img id="cardImg" alt="Tu certificado de participación" style="width:100%;border:3px solid var(--line);background:var(--bg);min-height:120px">
   <button class="btn" data-act="dl">Descargar imagen</button>
-  <button class="opt" data-act="again">Jugar otra vez</button>`);makeCard(win,why)},400);
+  <button class="opt" data-act="again">Jugar otra vez</button>`);makeCard(win,why);showSend()},400);
 }
 
 /* ---------- dibujo ---------- */
