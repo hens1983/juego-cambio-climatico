@@ -5,7 +5,7 @@ Juego educativo en un solo archivo (`index.html`, sin dependencias) para **1º d
 ## Qué hace
 - Mapa tipo Zelda de 4 pantallas (Tabernas, Sorbas, Pueblo, Costa de Cabo de Gata) más la cueva de Sorbas (repaso de rocas).
 - 2025 → 2050, un año cada 36 s. Objetivo: llegar a 2050 con menos de +1.5 °C. Se pierde si el mar sube 60 cm.
-- Ciencia (🔬) se gana con paneles informativos (8), retos de la profe (8, cada 3 años desde 2028), misiones (6), rocas (5), +2 al año y basura recogible (1 🔬, aparece cada 30 s, máximo 4).
+- Ciencia (🔬) se gana con paneles informativos (8), retos de la profe (12, cada 2 años desde 2027), misiones (6), rocas (5), +2 al año y basura recogible (1 🔬, aparece cada 15 s, máximo 5).
 - Se gasta en placas solares, árboles, posidonia y 5 medidas del Ayuntamiento (mitigación y adaptación).
 - Eventos en 2031, 2036, 2041 y 2046 (ola de calor, DANA, incendio, ola de calor marina).
 - Tutorial de 4 pantallas al empezar (misión, marcador, controles, Ciencia), que se puede volver a abrir desde Misiones.
@@ -20,12 +20,13 @@ Juego educativo en un solo archivo (`index.html`, sin dependencias) para **1º d
 - Se publica con **GitHub Pages** desde `main` (`https://hens1983.github.io/juego-cambio-climatico/`). El repositorio tiene que ser público para eso con una cuenta gratuita.
 - `index.html` es un documento completo. La versión publicada como Artifact de claude.ai se genera quitando `<!doctype>`, `<html>`, `<head>` y `<body>` (el Artifact no permite descargas, así que allí el botón de la imagen no funciona).
 
-## Constantes de equilibrio (en el script de `index.html`)
-`YEAR_SEC=36`, costes `COST={tree:6,solar:12,pos:7}`, medidas del Ayuntamiento 12-16, emisiones base 4.7 menos 0.8 por placa y menos las medidas, árbol absorbe 0.4 y posidonia 0.5 por año, `LOSE_SEA=60`. Probado con bots: quien lo hace todo gana con margen, quien solo planta pierde por poco, quien no hace nada pierde hacia 2043.
+## Equilibrio (objeto `BAL` en `index.html`)
+Emisiones base 6 ppm/año; cada placa −1; medidas bus −0.7, reciclaje −0.5, coche eléctrico −0.7; árbol absorbe 0.3 y posidonia 0.4. El CO₂ no baja de 420 ppm (la temperatura no baja de la actual, +1.1 °C: en la realidad no se enfría rápido). Precios ×1.2 (placa 14, árbol 7, posidonia 8, medidas 14-19). `YEAR_SEC=36`, `LOSE_SEA=60`.
+Ajustado con 100 partidas simuladas (`pruebas/`): gana ~74 % (aplicados 100 %, normales 90 %, despistados y pasivos 0 %). Sin placas solares no gana nadie y con 4 placas ganan todos: plantar ayuda pero no basta.
 
 ## Cómo probarlo
 - El gancho `window.__TEST__=true` (con `addInitScript` de Playwright) expone `window.__g` con el estado. Sin eso no existe, para que los alumnos no hagan trampas.
-- Con `page.clock.install()` y `page.clock.runFor(ms)` se juega una partida entera en poco tiempo. Chromium está en `/opt/pw-browsers/chromium`.
+- Con `window.__FAST__=true` el bucle no avanza solo y `__g.run(segundos)` adelanta el juego al instante (así funciona `pruebas/simular-clase.js`). Chromium está en `/opt/pw-browsers/chromium`.
 - Tras editar, comprobar la sintaxis del script con `node --check`.
 
 ## Pendiente o ideas
