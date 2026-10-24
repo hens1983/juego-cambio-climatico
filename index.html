@@ -99,7 +99,7 @@ canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touc
 <script>
 (function(){
 const COLS=10, ROWS=12, CAVE_ROWS=14, YEAR_SEC=36, END_YEAR=2050, LOSE_SEA=60;
-const COST={tree:5,solar:10,pos:6};
+const COST={tree:6,solar:12,pos:7};
 const ROCKS={
  1:{n:'Suelo',kind:'Suelo',sci:1,c:'#8a5a32',a:'#6d4524',b:'#a4713f',
   fact:'El suelo nace cuando la lluvia, el viento y las raíces rompen la roca poco a poco. En Almería hay poco y se lo lleva la erosión cuando llueve de golpe.',
@@ -155,14 +155,25 @@ Object.assign(CARDS,{
   q:'El océano absorbe…',o:['Calor y CO₂ de la atmósfera','Solo sal','Solo lluvia'],a_:0}
 });
 [1,2,3,4,5].forEach(t=>{ROCKS[t].rw=2});['tree','solar','pos'].forEach(k=>{CARDS[k].rw=2});
-Object.keys(CARDS).forEach(k=>{if(CARDS[k].rw===undefined)CARDS[k].rw=5});
+Object.keys(CARDS).forEach(k=>{if(CARDS[k].rw===undefined)CARDS[k].rw=4});
+const RETOS=[
+ {fact:'¡Reto de la profe! A ver si recuerdas lo que hemos visto.',q:'¿Qué gas es el principal responsable del cambio climático actual?',o:['CO₂ (dióxido de carbono)','Oxígeno','Nitrógeno'],a_:0},
+ {fact:'¡Reto de la profe!',q:'¿Cuál de estas es una energía renovable?',o:['La solar','El carbón','El petróleo'],a_:0},
+ {fact:'¡Reto de la profe!',q:'¿Qué hacen los árboles con el CO₂?',o:['Lo absorben al hacer la fotosíntesis','Lo fabrican','Nada, lo ignoran'],a_:0},
+ {fact:'¡Reto de la profe!',q:'Mitigar el cambio climático es…',o:['Reducir las emisiones de gases','Prepararse para las inundaciones','Negar el problema'],a_:0},
+ {fact:'¡Reto de la profe!',q:'¿Cuál es una medida de adaptación?',o:['Guardar agua para las sequías','Quemar más gas','Ignorar el problema'],a_:0},
+ {fact:'¡Reto de la profe!',q:'¿Por qué es mala la deforestación para el clima?',o:['Hay menos árboles que absorban CO₂','Hace que llueva más','Sube la sal del mar'],a_:0},
+ {fact:'¡Reto de la profe!',q:'¿Qué puedes hacer tú para ayudar?',o:['Ir andando o en bici y ahorrar energía','Dejar las luces encendidas','Tirar plástico al mar'],a_:0},
+ {fact:'¡Reto de la profe!',q:'El límite de +1.5 °C se propone para…',o:['Frenar los peores efectos del calentamiento','Medir la temperatura del aula','Calcular la altura de las olas'],a_:0}
+];
+RETOS.forEach((r,i)=>{CARDS['reto'+i]=Object.assign({n:'Reto de la profe',kind:'Reto',c:'#7bd88f',rw:4},r)});
 const BOARDS=[[['desert','agua'],['clima','mitig']],[['gei','causas'],['mar','oceano']]];
 const POLICIES=[
- {id:'bus',t:'Mitigación',n:'Transporte público y bicis',cost:12,e:'Las emisiones del pueblo bajan 0,5 ppm al año.'},
- {id:'reci',t:'Mitigación',n:'Ahorro de energía y reciclaje',cost:10,e:'Las emisiones del pueblo bajan 0,4 ppm al año.'},
- {id:'ev',t:'Mitigación',n:'Coches eléctricos y puntos de carga',cost:14,e:'Las emisiones del pueblo bajan 0,5 ppm al año.'},
- {id:'agua',t:'Adaptación',n:'Depósitos de agua y riego eficiente',cost:10,e:'Los árboles resisten sequías, olas de calor e incendios.'},
- {id:'dunas',t:'Adaptación',n:'Recuperar dunas y playa',cost:14,e:'El mar debe subir 15 cm más para inundar el pueblo y las tormentas hacen menos daño.'}
+ {id:'bus',t:'Mitigación',n:'Transporte público y bicis',cost:14,e:'Las emisiones del pueblo bajan 0,5 ppm al año.'},
+ {id:'reci',t:'Mitigación',n:'Ahorro de energía y reciclaje',cost:12,e:'Las emisiones del pueblo bajan 0,4 ppm al año.'},
+ {id:'ev',t:'Mitigación',n:'Coches eléctricos y puntos de carga',cost:16,e:'Las emisiones del pueblo bajan 0,5 ppm al año.'},
+ {id:'agua',t:'Adaptación',n:'Depósitos de agua y riego eficiente',cost:12,e:'Los árboles resisten sequías, olas de calor e incendios.'},
+ {id:'dunas',t:'Adaptación',n:'Recuperar dunas y playa',cost:16,e:'El mar debe subir 15 cm más para inundar el pueblo y las tormentas hacen menos daño.'}
 ];
 /* Pantallas del mapa (2x2). I panel informativo  A Ayuntamiento  # muro  ~ mar  , aguas someras  T parcela de árbol  S tejado  H casa  N profe  F fábrica
    C cueva  c cactus  P pradera de posidonia  1 2 3 playa que se inunda al subir el mar */
@@ -210,7 +221,7 @@ function makeCave(){
 }
 function newGame(){
   S={year:2025,yt:0,t:0,ppm:420,sci:10,mode:'world',sx:0,sy:1,x:5,y:5,vx:5,vy:5,fx:0,fy:-1,
-     hold:null,path:[],after:null,spots:{},read:{},pol:{},found:{},seen:{},qdone:{},cave:makeCave(),
+     hold:null,path:[],after:null,spots:{},read:{},pol:{},retoN:0,reto:false,warnSea:false,found:{},seen:{},qdone:{},cave:makeCave(),
      smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
   S.spots['0,0,5,1']={k:'tree',dead:false,born:-9};
 }
@@ -308,7 +319,7 @@ function refresh(){
 }
 function setHint(){
   let h;
-  if(S.mode==='cave')h='Repaso de geología: excava y descubre las rocas.';
+  if(S.mode==='cave')h='Repaso de geología: descubre las 5 rocas (+2 🔬 cada una).';
   else{
     const a=pickAction();
     h=a?hintFor(a):questHint();
@@ -368,6 +379,7 @@ function interact(a){
 }
 function npc(){
   S.seen.talked=true;
+  if(S.reto&&S.retoN<RETOS.length){S.reto=false;showCard('reto'+(S.retoN++));return}
   const q=QUESTS.find(q=>!S.qdone[q.id]);
   const tips={read:'Lee los paneles informativos repartidos por el mapa. Si aciertas la pregunta ganas 🔬.',
     solar:'Las placas se instalan en los tejados del pueblo. Cuestan '+COST.solar+' 🔬 y reducen las emisiones de la fábrica.',
@@ -455,8 +467,8 @@ cv.addEventListener('pointerdown',e=>{
   if(S.mode==='world'){tapWorld(c,r);return}
   const t=S.cave[r][c];
   if(r===0||t===0){toast(r===0?'Excava hacia abajo.':'Ya está excavado.');return}
-  S.cave[r][c]=0;S.sci+=ROCKS[t].sci;
-  if(S.found[t])toast('+'+ROCKS[t].sci+' 🔬 '+ROCKS[t].n);
+  S.cave[r][c]=0;
+  if(S.found[t])toast(ROCKS[t].n);
   refresh();foundRock(t);checkQuests();refresh();
 });
 document.querySelectorAll('.dpad button').forEach(b=>{
@@ -487,10 +499,13 @@ const EVENTS={
 };
 function yearTick(){
   S.year++;S.sci+=2;
+  if(S.year>=2028&&(S.year-2028)%3===0&&S.retoN<RETOS.length){S.reto=true;toast('La profe tiene un reto para ti')}
   const tr=count('tree'),ps=count('pos'),tp=temp();
   if(!S.pol.agua&&tp>1.8&&tr>0&&Math.random()<0.35){killOne('tree');toast('Sequía: se ha secado un árbol en Tabernas')}
   else if(tp>1.9&&ps>0&&Math.random()<0.3){killOne('pos');toast('Ola de calor marina: se ha muerto posidonia')}
   const f=floodStep();if(f>S.lastFlood){S.lastFlood=f;toast('El mar sube: la playa se estrecha')}
+  if(tp>1.5&&S.year%3===0)toast('Cuidado: ya estamos en +'+tp.toFixed(1)+' °C');
+  if(sea()>=40&&!S.warnSea){S.warnSea=true;toast('¡El mar ya sube! A 60 cm se inunda el pueblo.')}
   refresh();
   if(S.year>=END_YEAR){end(temp()<=1.5,'time');return}
   const ev=EVENTS[S.year];
@@ -567,7 +582,7 @@ function objW(c,r,x){
     const b=Math.sin(S.t*3)*T*.03;
     rect(X+T*.25,Y+T*.4+b,T*.5,T*.5,'#f4f4f4');rect(X+T*.3,Y+T*.15+b,T*.4,T*.3,'#e0b48a');rect(X+T*.28,Y+T*.1+b,T*.44,T*.12,'#5a3a22');
     rect(X+T*.34,Y+T*.28+b,T*.12,T*.08,'#222');rect(X+T*.54,Y+T*.28+b,T*.12,T*.08,'#222');
-    if(!S.qdone.rocks&&!S.seen.talked)rect(X+T*.8,Y-T*.05+b,T*.12,T*.3,'#f2a93b');
+    if(S.reto||!S.seen.talked)rect(X+T*.8,Y-T*.05+b,T*.12,T*.3,'#f2a93b');
   }
   if(x==='F'){
     rect(X+T*.03,Y+T*.2,T*.94,T*.8,'#6a6670');rect(X+T*.03,Y+T*.2,T*.94,T*.12,'#55515b');
