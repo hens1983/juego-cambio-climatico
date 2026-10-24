@@ -229,7 +229,7 @@ const temp=()=>Math.max(1,1.1+(S.ppm-420)*0.012);
 const sea=()=>Math.max(0,Math.round((temp()-1.1)*60)-(S.pol.dunas?15:0));
 const floodStep=()=>Math.min(3,Math.floor(sea()/20));
 function count(k){return Object.values(S.spots).filter(o=>o.k===k&&!o.dead).length}
-const emis=()=>Math.max(0.3,5.2-0.8*count('solar')-(S.pol.bus?.5:0)-(S.pol.reci?.4:0)-(S.pol.ev?.5:0));
+const emis=()=>Math.max(0.3,4.7-0.8*count('solar')-(S.pol.bus?.5:0)-(S.pol.reci?.4:0)-(S.pol.ev?.5:0));
 const rate=()=>emis()-0.4*count('tree')-0.5*count('pos');
 
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove('show'),2000)}
