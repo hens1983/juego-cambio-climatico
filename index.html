@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Guardianes de Cabo de Gata</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Silkscreen:wght@400;700&display=swap">
@@ -49,6 +54,11 @@ canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touc
 #card{background:var(--panel);border:3px solid var(--accent);max-width:440px;width:100%;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow-y:auto}
 #card h2{font-family:var(--display);font-size:20px;margin:0;line-height:1.2;text-wrap:balance}
 #card p{margin:0;line-height:1.45;font-size:15.5px}
+.in{font:inherit;font-size:16px;color:var(--text);background:var(--bg);border:3px solid var(--line);padding:10px 12px;width:100%;box-sizing:border-box;user-select:text;-webkit-user-select:text}
+.in:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.lb{font-size:13px;color:var(--muted);letter-spacing:.03em}
+.err{color:var(--bad);font-weight:700}
+textarea.code{font:12px/1.3 ui-monospace,Menlo,Consolas,monospace;color:var(--text);background:var(--bg);border:2px solid var(--line);width:100%;box-sizing:border-box;padding:8px;resize:none;user-select:text;-webkit-user-select:text}
 .opt small{display:block;font-weight:400;color:var(--muted);margin-top:2px}
 .tag{display:inline-block;font-size:12px;background:var(--bg);border:2px solid var(--line);padding:2px 8px;color:var(--accent);align-self:flex-start;letter-spacing:.03em}
 .sw{width:44px;height:44px;border:3px solid var(--text);flex:none}
@@ -70,6 +80,8 @@ canvas{display:block;image-rendering:pixelated;border:3px solid var(--line);touc
 .rocks span{width:22px;height:22px;border:2px solid var(--line);background:var(--bg)}
 @media (prefers-reduced-motion:reduce){#toast{transition:none}}
 </style>
+</head>
+<body>
 
 <div id="app">
   <div class="hud">
@@ -200,6 +212,9 @@ const QUESTS=[
  {id:'ayto',t:'Aprueba 2 medidas en el Ayuntamiento',g:2,n:()=>Object.keys(S.pol).length},
  {id:'rocks',t:'Repasa 3 rocas en las cuevas de Sorbas',g:3,n:()=>Object.keys(S.found).length}
 ];
+let CFG={};
+try{const m=/#c=([A-Za-z0-9_-]+)/.exec(location.hash);if(m){const b=m[1].replace(/-/g,'+').replace(/_/g,'/');CFG=JSON.parse(decodeURIComponent(escape(atob(b))))}}catch(e){CFG={}}
+const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
 let T=24, dpr=1, S;
@@ -222,7 +237,7 @@ function makeCave(){
 function newGame(){
   S={year:2025,yt:0,t:0,ppm:420,sci:10,mode:'world',sx:0,sy:1,x:5,y:5,vx:5,vy:5,fx:0,fy:-1,
      hold:null,path:[],after:null,spots:{},read:{},pol:{},retoN:0,reto:false,warnSea:false,found:{},seen:{},qdone:{},cave:makeCave(),
-     smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
+     ans:[],player:null,sid:'',t0:0,last:null,sendStatus:'',smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
   S.spots['0,0,5,1']={k:'tree',dead:false,born:-9};
 }
 const temp=()=>Math.max(1,1.1+(S.ppm-420)*0.012);
@@ -238,14 +253,62 @@ function modal(html,after){
   $('card').innerHTML=html;$('modal').hidden=false;$('modal')._after=after;
 }
 function closeModal(){const m=$('modal');m.hidden=true;S.paused=false;const f=m._after;m._after=null;if(f)f()}
+$('card').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=$('card').querySelector('[data-act=start]');if(b)b.click()}});
 $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act;
   if(a==='close')closeModal();
-  else if(a==='again'){newGame();$('modal').hidden=true;setMode('world');S.paused=false}
+  else if(a==='start')startPlayer();
+  else if(a==='copy'){const t=$('codeBox');t.select();let ok=false;try{ok=navigator.clipboard&&navigator.clipboard.writeText(t.value)}catch(e){}b.textContent='Código copiado'}
+  else if(a==='again'){const pl=Object.assign({},S.player,{intento:S.player.intento+1});newGame();S.player=pl;newSession();report('jugando');$('modal').hidden=true;setMode('world');S.paused=false}
   else if(a==='opt')answer(b);
   else if(a==='buy')buy(b.dataset.id);
 });
 
+function askName(){
+  let n='',g='';try{n=localStorage.getItem('cg_n')||'';g=localStorage.getItem('cg_g')||''}catch(e){}
+  modal(`<h2>¿Quién juega?</h2><span class="tag">Actividad de clase</span>
+  <p>Escribe tu nombre como lo conoce tu profe. Verá tu nombre y tus resultados cuando termines.</p>
+  <div><label class="lb" for="pNombre">Nombre y apellido</label><input class="in" id="pNombre" maxlength="40" autocomplete="off" value="${esc(n)}"></div>
+  ${CFG.g?`<p>Grupo: <b>${esc(CFG.g)}</b></p>`:`<div><label class="lb" for="pGrupo">Curso y grupo (por ejemplo 1º A)</label><input class="in" id="pGrupo" maxlength="12" autocomplete="off" value="${esc(g)}"></div>`}
+  <p class="err" id="pErr" hidden></p>
+  <button class="btn" data-act="start">Continuar</button>`);
+}
+function startPlayer(){
+  const n=$('pNombre').value.replace(/\s+/g,' ').trim(),g=CFG.g||($('pGrupo')?$('pGrupo').value.replace(/\s+/g,' ').trim():'');
+  const err=$('pErr');
+  if(n.length<3||!/\s|.{6,}/.test(n)){err.textContent='Escribe tu nombre y tu apellido.';err.hidden=false;return}
+  if(!g){err.textContent='Escribe tu curso y grupo.';err.hidden=false;return}
+  let it=1;try{localStorage.setItem('cg_n',n);localStorage.setItem('cg_g',g);const k='cg_i_'+n.toLowerCase()+'|'+g.toLowerCase();it=(+localStorage.getItem(k)||0)+1;localStorage.setItem(k,it)}catch(e){}
+  S.player={nombre:n,grupo:g,intento:it};newSession();report('jugando');intro();
+}
+function newSession(){S.sid=Date.now().toString(36)+Math.random().toString(36).slice(2,8);S.t0=Date.now();S.ans=[]}
+function payload(estado,motivo){
+  return {v:1,sid:S.sid,nombre:S.player.nombre,grupo:S.player.grupo,intento:S.player.intento,estado,motivo:motivo||'',
+    t0:S.t0,real:Math.round((Date.now()-S.t0)/1000),year:S.year,ppm:Math.round(S.ppm),temp:+temp().toFixed(2),sea:sea(),
+    solar:count('solar'),trees:count('tree'),pos:count('pos'),pol:Object.keys(S.pol),read:Object.keys(S.read).length,
+    quests:Object.keys(S.qdone).length,found:Object.keys(S.found).length,ans:S.ans};
+}
+async function send(p){
+  if(!CFG.u)return 'sin';
+  const o={method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)};
+  try{const r=await fetch(CFG.u,o);const j=await r.json();return j&&j.ok?'ok':'fallo'}
+  catch(e){try{await fetch(CFG.u,Object.assign({mode:'no-cors'},o));return 'enviado'}catch(e2){return 'fallo'}}
+}
+function report(estado,motivo){
+  if(!S.player)return Promise.resolve();
+  const p=payload(estado,motivo);S.last=p;
+  return send(p).then(r=>{S.sendStatus=r;showSend()});
+}
+async function makeCode(p){
+  const bytes=new TextEncoder().encode(JSON.stringify(p));let out=bytes,pre='A';
+  if(window.CompressionStream){try{const cs=new CompressionStream('deflate-raw'),w=cs.writable.getWriter();w.write(bytes);w.close();out=new Uint8Array(await new Response(cs.readable).arrayBuffer());pre='Z'}catch(e){out=bytes;pre='A'}}
+  let bin='';out.forEach(b=>{bin+=String.fromCharCode(b)});
+  return pre+btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function showSend(){
+  const m=$('sendMsg');if(!m)return;
+  m.textContent={ok:'Resultado enviado a tu profe.',enviado:'Resultado enviado. Si tu profe no lo ve, entrégale el código.',fallo:'No se pudo enviar. Entrega este código a tu profe.',sin:'Modo práctica: nadie recibe tu resultado solo. Entrega este código a tu profe.','':'Enviando resultado a tu profe…'}[S.sendStatus||''];
+}
 function intro(){
   modal(`<h2>Guardianes de Cabo de Gata</h2>
   <span class="tag">2025 → 2050 · unos 15 minutos</span>
@@ -270,6 +333,7 @@ function answer(b){
   document.querySelectorAll('.opt').forEach(o=>{o.disabled=true;if(+o.dataset.i===R.a_)o.classList.add('right')});
   if(!ok)b.classList.add('wrong');
   if(ok)S.sci+=rw;
+  S.ans.push({k:key,q:R.q,e:R.o[i],c:R.o[R.a_],ok:ok?1:0});
   $('fb').innerHTML=`<p>${ok?'¡Correcto! +'+rw+' 🔬':'Casi. La respuesta correcta es: <b>'+R.o[R.a_]+'</b>.'}</p><button class="btn" data-act="close" style="margin-top:10px;width:100%">Seguir</button>`;
   refresh();
 }
@@ -481,6 +545,7 @@ document.querySelectorAll('.dpad button').forEach(b=>{
 $('bA').addEventListener('pointerdown',e=>{e.preventDefault();actionPress()});
 const KEYS={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]};
 window.addEventListener('keydown',e=>{
+  if(e.target&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;
   if(KEYS[e.key]){e.preventDefault();if(!S.paused){S.path=[];S.after=null;S.hold=KEYS[e.key]}}
   else if(e.key===' '||e.key==='Enter'||e.key==='e'){if(!$('modal').hidden)return;e.preventDefault();actionPress()}
 });
@@ -502,6 +567,7 @@ function yearTick(){
   S.year++;S.sci+=2;
   if(S.year>=2028&&(S.year-2028)%3===0&&S.retoN<RETOS.length){S.reto=true;toast('La profe tiene un reto para ti')}
   const tr=count('tree'),ps=count('pos'),tp=temp();
+  if(S.year<END_YEAR&&(S.year-2025)%5===0)report('jugando');
   if(!S.pol.agua&&tp>1.8&&tr>0&&Math.random()<0.35){killOne('tree');toast('Sequía: se ha secado un árbol en Tabernas')}
   else if(tp>1.9&&ps>0&&Math.random()<0.3){killOne('pos');toast('Ola de calor marina: se ha muerto posidonia')}
   const f=floodStep();if(f>S.lastFlood){S.lastFlood=f;toast('El mar sube: la playa se estrecha')}
@@ -514,16 +580,18 @@ function yearTick(){
 }
 function end(win,why){
   S.over=true;S.paused=true;S.hold=null;S.path=[];
+  report(win?'ganada':'perdida',why);
   const tp=temp(),mit=['bus','reci','ev'].filter(k=>S.pol[k]).length,ada=['agua','dunas'].filter(k=>S.pol[k]).length;
   const title=win?'¡Lo conseguiste!':(why==='sea'?'El mar llegó al pueblo':'Demasiado calor');
   const msg=win?'Llegaste a 2050 con el clima bajo control. Menos humo, más árboles y praderas de posidonia frenaron el calentamiento.'
     :(why==='sea'?'Con tanto calor el nivel del mar subió 60 cm y cubrió las casas. Hay que reducir el CO₂ antes.':'El pueblo sigue en pie, pero la temperatura superó +1.5 °C. Prueba a instalar placas solares y plantar desde el principio.');
-  setTimeout(()=>modal(`<h2>${title}</h2><p>${msg}</p>
+  setTimeout(()=>{modal(`<h2>${title}</h2><p>${msg}</p>
   <div class="stats-end"><div><b>${S.year}</b>año</div><div><b>${Math.round(S.ppm)} ppm</b>CO₂</div>
   <div><b>+${tp.toFixed(1)} °C</b>temperatura</div>
   <div><b>${count('solar')}</b>placas solares</div><div><b>${count('tree')+count('pos')}</b>árboles y posidonia vivos</div><div><b>${mit}</b>medidas de mitigación</div><div><b>${ada}</b>medidas de adaptación</div></div>
   <p><b>Para comentar en clase:</b> ¿qué cambió en la costa durante tu partida y qué decisión habría cambiado el resultado?</p>
-  <button class="btn" data-act="again">Jugar otra vez</button>`),400);
+  <div class="opts"><p id="sendMsg" style="font-size:14px;color:var(--muted)">Enviando resultado a tu profe…</p><textarea class="code" id="codeBox" rows="3" readonly aria-label="Código de resultado"></textarea><button class="opt" data-act="copy">Copiar código</button></div>
+  <button class="btn" data-act="again">Jugar otra vez</button>`);makeCode(S.last||payload(win?'ganada':'perdida',why)).then(c=>{const t=$('codeBox');if(t)t.value=c});showSend()},400);
 }
 
 /* ---------- dibujo ---------- */
@@ -694,8 +762,10 @@ function loop(now){
   draw(dt);
   requestAnimationFrame(loop);
 }
-window.__g={get S(){return S},yearTick,count,CARDS};
-newGame();setMode('world');intro();
+if(window.__TEST__)window.__g={get S(){return S},yearTick,count,CARDS};
+newGame();setMode('world');askName();
 requestAnimationFrame(loop);
 })();
 </script>
+</body>
+</html>
