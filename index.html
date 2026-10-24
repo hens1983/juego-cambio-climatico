@@ -212,8 +212,6 @@ const QUESTS=[
  {id:'ayto',t:'Aprueba 2 medidas en el Ayuntamiento',g:2,n:()=>Object.keys(S.pol).length},
  {id:'rocks',t:'Repasa 3 rocas en las cuevas de Sorbas',g:3,n:()=>Object.keys(S.found).length}
 ];
-let CFG={};
-try{const m=/#c=([A-Za-z0-9_-]+)/.exec(location.hash);if(m){const b=m[1].replace(/-/g,'+').replace(/_/g,'/');CFG=JSON.parse(decodeURIComponent(escape(atob(b))))}}catch(e){CFG={}}
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
@@ -237,7 +235,7 @@ function makeCave(){
 function newGame(){
   S={year:2025,yt:0,t:0,ppm:420,sci:10,mode:'world',sx:0,sy:1,x:5,y:5,vx:5,vy:5,fx:0,fy:-1,
      hold:null,path:[],after:null,spots:{},read:{},pol:{},retoN:0,reto:false,warnSea:false,found:{},seen:{},qdone:{},cave:makeCave(),
-     ans:[],player:null,sid:'',t0:0,last:null,sendStatus:'',smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
+     ans:[],player:null,sid:'',t0:0,cardUrl:'',cardName:'',smoke:[],spawn:0,paused:true,over:false,lastFlood:0,enter:false,lastHint:''};
   S.spots['0,0,5,1']={k:'tree',dead:false,born:-9};
 }
 const temp=()=>Math.max(1,1.1+(S.ppm-420)*0.012);
@@ -258,8 +256,8 @@ $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');i
   const a=b.dataset.act;
   if(a==='close')closeModal();
   else if(a==='start')startPlayer();
-  else if(a==='copy'){const t=$('codeBox');t.select();let ok=false;try{ok=navigator.clipboard&&navigator.clipboard.writeText(t.value)}catch(e){}b.textContent='Código copiado'}
-  else if(a==='again'){const pl=Object.assign({},S.player,{intento:S.player.intento+1});newGame();S.player=pl;newSession();report('jugando');$('modal').hidden=true;setMode('world');S.paused=false}
+  else if(a==='dl')download();
+  else if(a==='again'){const pl=Object.assign({},S.player,{intento:S.player.intento+1});newGame();S.player=pl;newSession();$('modal').hidden=true;setMode('world');S.paused=false}
   else if(a==='opt')answer(b);
   else if(a==='buy')buy(b.dataset.id);
 });
@@ -267,19 +265,19 @@ $('modal').addEventListener('click',e=>{const b=e.target.closest('[data-act]');i
 function askName(){
   let n='',g='';try{n=localStorage.getItem('cg_n')||'';g=localStorage.getItem('cg_g')||''}catch(e){}
   modal(`<h2>¿Quién juega?</h2><span class="tag">Actividad de clase</span>
-  <p>Escribe tu nombre como lo conoce tu profe. Verá tu nombre y tus resultados cuando termines.</p>
+  <p>Escribe tu nombre. Aparecerá en el certificado que podrás descargar cuando termines.</p>
   <div><label class="lb" for="pNombre">Nombre y apellido</label><input class="in" id="pNombre" maxlength="40" autocomplete="off" value="${esc(n)}"></div>
-  ${CFG.g?`<p>Grupo: <b>${esc(CFG.g)}</b></p>`:`<div><label class="lb" for="pGrupo">Curso y grupo (por ejemplo 1º A)</label><input class="in" id="pGrupo" maxlength="12" autocomplete="off" value="${esc(g)}"></div>`}
+  <div><label class="lb" for="pGrupo">Curso y grupo (por ejemplo 1º A)</label><input class="in" id="pGrupo" maxlength="12" autocomplete="off" value="${esc(g)}"></div>
   <p class="err" id="pErr" hidden></p>
   <button class="btn" data-act="start">Continuar</button>`);
 }
 function startPlayer(){
-  const n=$('pNombre').value.replace(/\s+/g,' ').trim(),g=CFG.g||($('pGrupo')?$('pGrupo').value.replace(/\s+/g,' ').trim():'');
+  const n=$('pNombre').value.replace(/\s+/g,' ').trim(),g=$('pGrupo').value.replace(/\s+/g,' ').trim();
   const err=$('pErr');
   if(n.length<3||!/\s|.{6,}/.test(n)){err.textContent='Escribe tu nombre y tu apellido.';err.hidden=false;return}
   if(!g){err.textContent='Escribe tu curso y grupo.';err.hidden=false;return}
   let it=1;try{localStorage.setItem('cg_n',n);localStorage.setItem('cg_g',g);const k='cg_i_'+n.toLowerCase()+'|'+g.toLowerCase();it=(+localStorage.getItem(k)||0)+1;localStorage.setItem(k,it)}catch(e){}
-  S.player={nombre:n,grupo:g,intento:it};newSession();report('jugando');intro();
+  S.player={nombre:n,grupo:g,intento:it};newSession();intro();
 }
 function newSession(){S.sid=Date.now().toString(36)+Math.random().toString(36).slice(2,8);S.t0=Date.now();S.ans=[]}
 function payload(estado,motivo){
@@ -288,26 +286,46 @@ function payload(estado,motivo){
     solar:count('solar'),trees:count('tree'),pos:count('pos'),pol:Object.keys(S.pol),read:Object.keys(S.read).length,
     quests:Object.keys(S.qdone).length,found:Object.keys(S.found).length,ans:S.ans};
 }
-async function send(p){
-  if(!CFG.u)return 'sin';
-  const o={method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)};
-  try{const r=await fetch(CFG.u,o);const j=await r.json();return j&&j.ok?'ok':'fallo'}
-  catch(e){try{await fetch(CFG.u,Object.assign({mode:'no-cors'},o));return 'enviado'}catch(e2){return 'fallo'}}
+function chk(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return h}
+async function makeCard(win,why){
+  const p=payload(win?'ganada':'perdida',why),ok=p.ans.filter(a=>a.ok).length,asked=p.ans.length;
+  try{await Promise.race([Promise.all([document.fonts.load("40px 'Silkscreen'"),document.fonts.load("700 30px 'Atkinson Hyperlegible'")]),new Promise(r=>setTimeout(r,1500))])}catch(e){}
+  const W=1080,H=1640,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  const D=n=>n+"px 'Silkscreen','Courier New',monospace",B=n=>'700 '+n+"px 'Atkinson Hyperlegible',system-ui,sans-serif",R=n=>n+"px 'Atkinson Hyperlegible',system-ui,sans-serif";
+  x.fillStyle='#1f1b24';x.fillRect(0,0,W,H);
+  const rock=['#8a5a32','#d6cdb3','#ece9e0','#6d6572','#f2f0f0'],bs=60;
+  for(let r=0;r<5;r++)for(let i=0;i<W/bs;i++){const X=i*bs,Y=H-(5-r)*bs,h=chk(i+'-'+r);x.fillStyle=rock[r];x.fillRect(X,Y,bs,bs);x.fillStyle='rgba(0,0,0,.14)';x.fillRect(X+(h%30),Y+((h>>5)%30),18,14);x.strokeStyle='rgba(0,0,0,.2)';x.lineWidth=1;x.strokeRect(X+.5,Y+.5,bs-1,bs-1)}
+  x.fillStyle='#58b84a';x.fillRect(0,H-5*bs-14,W,14);
+  x.strokeStyle='#f2a93b';x.lineWidth=10;x.strokeRect(5,5,W-10,H-10);
+  x.textAlign='center';x.textBaseline='alphabetic';
+  x.fillStyle='#f2a93b';x.font=D(26);x.fillText('CERTIFICADO DE PARTICIPACIÓN',W/2,100);
+  x.fillStyle='#f4ecdc';x.font=D(56);x.fillText('GUARDIANES',W/2,185);x.fillText('DE CABO DE GATA',W/2,255);
+  x.fillStyle='#b9ad9c';x.font=R(28);x.fillText('Juego sobre el cambio climático · 1º ESO',W/2,305);
+  x.font=R(30);x.fillText('Este certificado acredita que',W/2,385);
+  let fs=84;x.font=B(fs);while(x.measureText(p.nombre).width>W-140&&fs>34){fs-=4;x.font=B(fs)}
+  const y0=385+fs+14;x.fillStyle='#f4ecdc';x.fillText(p.nombre,W/2,y0);
+  x.fillStyle='#f2a93b';x.font=B(34);x.fillText(p.grupo,W/2,y0+56);
+  x.fillStyle='#b9ad9c';x.font=R(30);x.fillText('ha completado la partida de 2025 a 2050',W/2,y0+110);
+  x.fillStyle=win?'#1f3a2a':'#3f2420';x.fillRect(120,y0+140,W-240,84);x.strokeStyle=win?'#7bd88f':'#ff7a63';x.lineWidth=4;x.strokeRect(120,y0+140,W-240,84);
+  x.fillStyle=win?'#7bd88f':'#ff7a63';x.font=D(30);
+  x.fillText(win?'LLEGÓ A 2050 BAJO +1.5 °C':(why==='sea'?'EL MAR INUNDÓ EL PUEBLO':'SUPERÓ +1.5 °C'),W/2,y0+195);
+  const tiles=[[String(p.year),'AÑO FINAL'],[p.ppm+' ppm','CO₂'],['+'+p.temp.toFixed(1)+' °C','TEMPERATURA'],[p.sea+' cm','NIVEL DEL MAR']];
+  const tw=(W-240-30)/2,ty=y0+260;
+  tiles.forEach((t,i)=>{const tx=120+(i%2)*(tw+30),yy=ty+Math.floor(i/2)*130;x.fillStyle='#2e2836';x.fillRect(tx,yy,tw,110);x.strokeStyle='#4a4153';x.lineWidth=3;x.strokeRect(tx,yy,tw,110);
+    x.fillStyle='#f4ecdc';x.font=D(38);x.fillText(t[0],tx+tw/2,yy+56);x.fillStyle='#b9ad9c';x.font=R(22);x.fillText(t[1],tx+tw/2,yy+92)});
+  const ly=ty+290;x.textAlign='left';x.fillStyle='#f4ecdc';x.font=B(30);
+  const mit=p.pol.filter(k=>['bus','reci','ev'].includes(k)).length,ada=p.pol.filter(k=>['agua','dunas'].includes(k)).length;
+  ['Preguntas acertadas: '+ok+' de '+asked,'Misiones cumplidas: '+p.quests+' de 6 · Paneles leídos: '+p.read+' de 8','Placas solares: '+p.solar+' · Árboles: '+p.trees+' · Posidonia: '+p.pos,'Medidas de mitigación: '+mit+' · de adaptación: '+ada].forEach((t,i)=>{x.fillText(t,120,ly+i*52)});
+  x.textAlign='center';
+  const d=new Date(),fecha=d.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}),hora=d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  const code=chk([p.nombre,p.grupo,p.t0,p.year,p.ppm,p.temp,ok,asked,p.solar,p.trees,p.pos,p.pol.join('.')].join('|')+'|cg1').toString(36).toUpperCase().padStart(7,'0');
+  x.fillStyle='#b9ad9c';x.font=R(26);x.fillText(fecha+' · '+hora+' · '+Math.max(1,Math.round(p.real/60))+' min de juego',W/2,H-5*bs-70);
+  x.fillStyle='#f2a93b';x.font=D(26);x.fillText('CÓDIGO '+code.slice(0,4)+'-'+code.slice(4),W/2,H-5*bs-30);
+  c.toBlob(b=>{if(!b)return;S.cardName='guardianes-'+p.nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'.png';if(S.cardUrl)URL.revokeObjectURL(S.cardUrl);S.cardUrl=URL.createObjectURL(b);const im=$('cardImg');if(im)im.src=S.cardUrl},'image/png');
 }
-function report(estado,motivo){
-  if(!S.player)return Promise.resolve();
-  const p=payload(estado,motivo);S.last=p;
-  return send(p).then(r=>{S.sendStatus=r;showSend()});
-}
-async function makeCode(p){
-  const bytes=new TextEncoder().encode(JSON.stringify(p));let out=bytes,pre='A';
-  if(window.CompressionStream){try{const cs=new CompressionStream('deflate-raw'),w=cs.writable.getWriter();w.write(bytes);w.close();out=new Uint8Array(await new Response(cs.readable).arrayBuffer());pre='Z'}catch(e){out=bytes;pre='A'}}
-  let bin='';out.forEach(b=>{bin+=String.fromCharCode(b)});
-  return pre+btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-}
-function showSend(){
-  const m=$('sendMsg');if(!m)return;
-  m.textContent={ok:'Resultado enviado a tu profe.',enviado:'Resultado enviado. Si tu profe no lo ve, entrégale el código.',fallo:'No se pudo enviar. Entrega este código a tu profe.',sin:'Modo práctica: nadie recibe tu resultado solo. Entrega este código a tu profe.','':'Enviando resultado a tu profe…'}[S.sendStatus||''];
+function download(){
+  if(!S.cardUrl){toast('Un momento, se está creando la imagen.');return}
+  const a=document.createElement('a');a.href=S.cardUrl;a.download=S.cardName||'guardianes.png';document.body.appendChild(a);a.click();a.remove();
 }
 function intro(){
   modal(`<h2>Guardianes de Cabo de Gata</h2>
@@ -567,7 +585,6 @@ function yearTick(){
   S.year++;S.sci+=2;
   if(S.year>=2028&&(S.year-2028)%3===0&&S.retoN<RETOS.length){S.reto=true;toast('La profe tiene un reto para ti')}
   const tr=count('tree'),ps=count('pos'),tp=temp();
-  if(S.year<END_YEAR&&(S.year-2025)%5===0)report('jugando');
   if(!S.pol.agua&&tp>1.8&&tr>0&&Math.random()<0.35){killOne('tree');toast('Sequía: se ha secado un árbol en Tabernas')}
   else if(tp>1.9&&ps>0&&Math.random()<0.3){killOne('pos');toast('Ola de calor marina: se ha muerto posidonia')}
   const f=floodStep();if(f>S.lastFlood){S.lastFlood=f;toast('El mar sube: la playa se estrecha')}
@@ -580,7 +597,6 @@ function yearTick(){
 }
 function end(win,why){
   S.over=true;S.paused=true;S.hold=null;S.path=[];
-  report(win?'ganada':'perdida',why);
   const tp=temp(),mit=['bus','reci','ev'].filter(k=>S.pol[k]).length,ada=['agua','dunas'].filter(k=>S.pol[k]).length;
   const title=win?'¡Lo conseguiste!':(why==='sea'?'El mar llegó al pueblo':'Demasiado calor');
   const msg=win?'Llegaste a 2050 con el clima bajo control. Menos humo, más árboles y praderas de posidonia frenaron el calentamiento.'
@@ -590,8 +606,10 @@ function end(win,why){
   <div><b>+${tp.toFixed(1)} °C</b>temperatura</div>
   <div><b>${count('solar')}</b>placas solares</div><div><b>${count('tree')+count('pos')}</b>árboles y posidonia vivos</div><div><b>${mit}</b>medidas de mitigación</div><div><b>${ada}</b>medidas de adaptación</div></div>
   <p><b>Para comentar en clase:</b> ¿qué cambió en la costa durante tu partida y qué decisión habría cambiado el resultado?</p>
-  <div class="opts"><p id="sendMsg" style="font-size:14px;color:var(--muted)">Enviando resultado a tu profe…</p><textarea class="code" id="codeBox" rows="3" readonly aria-label="Código de resultado"></textarea><button class="opt" data-act="copy">Copiar código</button></div>
-  <button class="btn" data-act="again">Jugar otra vez</button>`);makeCode(S.last||payload(win?'ganada':'perdida',why)).then(c=>{const t=$('codeBox');if(t)t.value=c});showSend()},400);
+  <p style="font-size:14px;color:var(--muted)">Este es tu certificado. Descárgalo y entrégaselo a tu profe.</p>
+  <img id="cardImg" alt="Tu certificado de participación" style="width:100%;border:3px solid var(--line);background:var(--bg);min-height:120px">
+  <button class="btn" data-act="dl">Descargar imagen</button>
+  <button class="opt" data-act="again">Jugar otra vez</button>`);makeCard(win,why)},400);
 }
 
 /* ---------- dibujo ---------- */
