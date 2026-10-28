@@ -3,7 +3,7 @@
 Juego educativo en un solo archivo (`index.html`, sin dependencias) para **1º de ESO en Almería**. La profe es la mujer del usuario. Tema actual: **cambio climático** (la geología ya se estudió y solo queda como repaso). Una partida dura **unos 15 minutos** y debe funcionar en el móvil. Idioma: español, con textos pensados para niños de 12 años.
 
 ## Qué hace
-- Mapa tipo Zelda de 4 pantallas (Tabernas, Sorbas, Pueblo, Costa de Cabo de Gata) más la cueva de Sorbas (repaso de rocas).
+- Mundo de bloques en **vista isométrica** (estilo Minecraft) de 4 pantallas (Tabernas, Sorbas, Pueblo, Costa de Cabo de Gata) más la cueva de Sorbas (repaso de rocas). La lógica sigue siendo una cuadrícula de 10×12 con movimiento por casillas; solo cambia cómo se dibuja y cómo se toca.
 - 2025 → 2050, un año cada 36 s. Objetivo: llegar a 2050 con menos de +1.5 °C. Se pierde si el mar sube 60 cm.
 - Ciencia (🔬) se gana con paneles informativos (8), retos de la profe (12, cada 2 años desde 2027), misiones (6), rocas (5), +2 al año y basura recogible (1 🔬, aparece cada 15 s, máximo 5).
 - Se gasta en placas solares, árboles, posidonia y 5 medidas del Ayuntamiento (mitigación y adaptación).
@@ -16,6 +16,14 @@ Juego educativo en un solo archivo (`index.html`, sin dependencias) para **1º d
 - **Preguntas de la profe:** en `profe.html` → pestaña Preguntas edita los 12 retos y los 8 paneles (texto y pregunta). Se guardan en la pestaña `Preguntas` de su hoja (`doPost` con `tipo:'preguntas'` y clave; también se puede editar a mano en la hoja). Con enlace de clase el juego las pide con `?preguntas=1` (sin clave) y guarda una copia en el navegador; `applyQ` las aplica. Panel sin pregunta completa → el original; reto vacío → no sale; ningún reto → los originales. Sin enlace se usan las del código (`CARDS`, `RETOS`). Las rocas no se editan.
 - `profe.html` lleva copias de `apps-script/Code.gs` y de las preguntas originales (`DEF`). Tras cambiar cualquiera de los dos: `node pruebas/comprobar-copias.js --arreglar`.
 - Los textos de las tarjetas se escapan al mostrarlos (`esc`), porque ahora los escribe la profe.
+
+## Vista isométrica (sección «dibujo isométrico» de `index.html`)
+- Coordenadas del mundo: `x`=columna, `y`=fila, `z`=altura en bloques. Pantalla: `X=(x-y)·U`, `Y=(x+y)·U/2−z·U`; `U` es la mitad del ancho de una casilla y se calcula en `resize()`. Se ven la cara de arriba, la `+y` (izquierda) y la `+x` (derecha).
+- Todo se monta con `box()`/`box3()` (bloques con caras sombreadas) y `flat()`/`faceX()`/`faceY()`. Los objetos (`objW`, `house`, `drawPlayer`, `drawLitter`) son composiciones de bloques: para cambiar el aspecto de algo se tocan sus medidas ahí.
+- El suelo se pinta una vez en una imagen (`buildGround`, se rehace al cambiar de pantalla, de zoom o de nivel del mar) y el resto se ordena de atrás hacia delante cada fotograma (diagonales `c+r`). Si se añade algo que tape cosas, va en esa pasada y no en el suelo.
+- Cámara: sigue al jugador (`aim`); en la cueva es libre y se arrastra. Los toques se resuelven con `pickAt`, que prueba las casillas de delante hacia atrás contra su silueta (`topZ` da la altura de cada cosa), así se toca lo que se ve.
+- La cruceta va en diagonal (↖ ↗ ↙ ↘) porque las filas y columnas van en diagonal en pantalla. Las flechas del teclado siguen la misma lógica (↑ = ↗).
+- Antes (2D tipo Zelda) estaba en el historial de git, antes de la rama `vista-isometrica`.
 
 ## Decisiones tomadas
 - Primero se quitó el panel (bastaba el certificado); después el usuario pidió recuperarlo para tener trazabilidad. Se mantienen las dos cosas.
@@ -30,6 +38,7 @@ Ajustado con 100 partidas simuladas (`pruebas/`): gana ~74 % (aplicados 100 %, n
 ## Cómo probarlo
 - El gancho `window.__TEST__=true` (con `addInitScript` de Playwright) expone `window.__g` con el estado. Sin eso no existe, para que los alumnos no hagan trampas.
 - Con `window.__FAST__=true` el bucle no avanza solo y `__g.run(segundos)` adelanta el juego al instante (así funciona `pruebas/simular-clase.js`). Chromium está en `/opt/pw-browsers/chromium`.
+- `__g.tapCell(c,r)` toca una casilla sin pasar por el dibujo (mover/actuar en el mundo, excavar en la cueva): lo usa `pruebas/simular-clase.js`.
 - Tras editar, comprobar la sintaxis del script con `node --check`.
 - En Windows (sin Playwright) se puede probar en el navegador integrado: `node pruebas/servidor-prueba.js` y cargar `index.html` con `document.write` añadiendo antes `<script>window.__TEST__=true</script>` (el archivo usa saltos de línea CRLF).
 

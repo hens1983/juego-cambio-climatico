@@ -47,7 +47,7 @@ async function game(browser,i){
    return;
   }
  }
- const tap=async(c,r)=>{const bx=await p.locator('#cv').boundingBox();const rows=(await p.evaluate(()=>__g.S.mode))==='cave'?14:12;await p.mouse.click(bx.x+(c+.5)*bx.width/10,bx.y+(r+.5)*bx.height/rows)};
+ const tap=(c,r)=>p.evaluate(([c,r])=>__g.tapCell(c,r),[c,r]);   // la vista es isométrica: se toca la casilla por el gancho de pruebas
  async function walk(c,r){await tap(c,r);for(let k=0;k<20;k++){await adv(300);if(await modalOpen())break;const s=await st();if(!s.moving)break}await closeModals()}
  async function toScreen(tx,ty){
   for(let g=0;g<6;g++){const s=await st();if(s.over)return;if(s.mode==='cave'){await p.click('#bExit');await adv(200)}

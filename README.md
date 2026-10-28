@@ -1,6 +1,6 @@
 # Guardianes de Cabo de Gata
 
-Juego en HTML sobre cambio climático para 1º de ESO (Almería). Una partida dura unos 15 minutos y funciona en el móvil.
+Juego en HTML sobre cambio climático para 1º de ESO (Almería), en un mundo de bloques con vista isométrica. Una partida dura unos 15 minutos y funciona en el móvil.
 
 - **Alumnos:** `index.html`. Cada alumno escribe su nombre al empezar y al terminar puede descargar un certificado en imagen.
 - **Profe:** `profe.html`. Panel para ver quién ha jugado, cómo va cada partida casi en directo, las preguntas que ha fallado cada alumno y una nota orientativa. Los resultados llegan a una Hoja de cálculo de Google de la profe.
