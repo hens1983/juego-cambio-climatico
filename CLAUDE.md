@@ -13,6 +13,9 @@ Juego educativo en un solo archivo (`index.html`, sin dependencias) para **1º d
 - Los avisos van en cola para que no se pisen.
 - Al empezar el alumno escribe nombre y grupo. Al terminar se genera un **certificado PNG** descargable (nombre, resultado, aciertos, código).
 - **Informe a la profe:** si el juego se abre con el enlace de clase (`#c=` con la URL de la hoja y el grupo), envía la partida a una Hoja de Google de la profe al empezar, cada 5 años de juego y al terminar (misma fila por partida, `sid`). `profe.html` muestra la tabla, la ficha de cada alumno, CSV y una nota orientativa. El servidor es `apps-script/Code.gs` (Apps Script, `doPost` guarda y `doGet` con clave lee). Sin enlace de clase no se envía nada (modo práctica).
+- **Preguntas de la profe:** en `profe.html` → pestaña Preguntas edita los 12 retos y los 8 paneles (texto y pregunta). Se guardan en la pestaña `Preguntas` de su hoja (`doPost` con `tipo:'preguntas'` y clave; también se puede editar a mano en la hoja). Con enlace de clase el juego las pide con `?preguntas=1` (sin clave) y guarda una copia en el navegador; `applyQ` las aplica. Panel sin pregunta completa → el original; reto vacío → no sale; ningún reto → los originales. Sin enlace se usan las del código (`CARDS`, `RETOS`). Las rocas no se editan.
+- `profe.html` lleva copias de `apps-script/Code.gs` y de las preguntas originales (`DEF`). Tras cambiar cualquiera de los dos: `node pruebas/comprobar-copias.js --arreglar`.
+- Los textos de las tarjetas se escapan al mostrarlos (`esc`), porque ahora los escribe la profe.
 
 ## Decisiones tomadas
 - Primero se quitó el panel (bastaba el certificado); después el usuario pidió recuperarlo para tener trazabilidad. Se mantienen las dos cosas.
@@ -28,9 +31,10 @@ Ajustado con 100 partidas simuladas (`pruebas/`): gana ~74 % (aplicados 100 %, n
 - El gancho `window.__TEST__=true` (con `addInitScript` de Playwright) expone `window.__g` con el estado. Sin eso no existe, para que los alumnos no hagan trampas.
 - Con `window.__FAST__=true` el bucle no avanza solo y `__g.run(segundos)` adelanta el juego al instante (así funciona `pruebas/simular-clase.js`). Chromium está en `/opt/pw-browsers/chromium`.
 - Tras editar, comprobar la sintaxis del script con `node --check`.
+- En Windows (sin Playwright) se puede probar en el navegador integrado: `node pruebas/servidor-prueba.js` y cargar `index.html` con `document.write` añadiendo antes `<script>window.__TEST__=true</script>` (el archivo usa saltos de línea CRLF).
 
 ## Pendiente o ideas
-- Preguntas y retos editables por la profe desde su temario (ahora están escritos en el código: `CARDS`, `RETOS`).
+- Las preguntas editables nunca se han probado contra Google de verdad (solo con `pruebas/servidor-prueba.js`). Quien ya tenía la hoja preparada debe pegar el nuevo `Code.gs` e implementar una nueva versión.
 - Nombre del centro o logo en el certificado.
 - Más cosas que hacer a mitad de partida; nivel de agua en Tabernas; modo clase por votación.
 - Si la basura no basta, subir lo que da o lo frecuente que aparece.

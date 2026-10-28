@@ -53,13 +53,24 @@ td.n{text-align:right}
 ol.steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:8px}
 code{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--bg);padding:1px 5px}
 details summary{cursor:pointer;font-weight:700}
-@media print{body{background:#fff;color:#000}.card,.stat{border-color:#999;background:#fff}nav,#tabCfg,.noprint{display:none!important}th,td{color:#000}}
+.qs{display:flex;flex-direction:column;gap:8px}
+.qs details{background:var(--bg);border:2px solid var(--line);padding:8px 12px}
+.qs details[open]{border-color:var(--accent)}
+.qs summary{font-weight:400;overflow-wrap:anywhere}
+.qs summary b{color:var(--accent)}
+.qs summary small{color:var(--muted)}
+.qs .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;margin-top:10px}
+.qs .grid .wide{grid-column:1/-1}
+.qs textarea{font-family:var(--body);font-size:15px}
+.qs input.ok{border-color:var(--good)}
+.qs details.err{border-color:var(--bad)}
+@media print{body{background:#fff;color:#000}.card,.stat{border-color:#999;background:#fff}nav,#tabCfg,#tabPre,.noprint{display:none!important}th,td{color:#000}}
 </style>
 </head>
 <body>
 <div id="app">
   <header><h1>Panel de la profe</h1>
-    <nav><button id="nRes" class="on">Resultados</button><button id="nCfg">Configuración</button></nav></header>
+    <nav><button id="nRes" class="on">Resultados</button><button id="nPre">Preguntas</button><button id="nCfg">Configuración</button></nav></header>
 
   <section id="tabRes" class="card">
     <div class="row noprint">
@@ -81,6 +92,36 @@ details summary{cursor:pointer;font-weight:700}
 
   <section id="aDet" class="card" hidden></section>
 
+  <section id="tabPre" hidden>
+   <div class="card">
+    <h2>Preguntas del juego</h2>
+    <p style="margin:0">Aquí puedes cambiar los <b>12 retos de la profe</b> (salen cada 2 años de juego, desde 2027) y los <b>8 paneles informativos</b> (el texto que leen y su pregunta). Se guardan en tu hoja de Google, en la pestaña <b>Preguntas</b>, y el juego las usa cuando los alumnos entran con tu enlace de clase. Sin enlace (modo práctica) salen las preguntas originales.</p>
+    <div class="row">
+      <label>Dirección de la hoja (URL de la aplicación web)<input id="qUrl" autocomplete="off" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label style="flex:0 1 180px">Tu clave<input id="qKey" type="password" autocomplete="off"></label>
+      <button id="bQLoad" class="main">Cargar mis preguntas</button>
+    </div>
+    <p class="msg" id="qMsg">Pulsa Cargar mis preguntas para empezar. La primera vez verás las originales.</p>
+    <details><summary>Si preparaste la hoja antes de que existiera esta pestaña</summary>
+      <ol class="steps" style="margin-top:8px">
+        <li>Abre tu hoja, ve a <b>Extensiones → Apps Script</b> y sustituye el código por el nuevo de la pestaña <b>Configuración</b> (vuelve a poner tu clave). Guarda.</li>
+        <li>Pulsa <b>Implementar → Gestionar implementaciones</b>, el lápiz de editar, en <i>Versión</i> elige <b>Nueva versión</b> e <b>Implementar</b>. La URL no cambia y el enlace de los alumnos sigue valiendo.</li>
+      </ol>
+    </details>
+   </div>
+   <div class="card" id="qEdit" style="margin-top:16px" hidden>
+    <h2>Retos de la profe</h2>
+    <p class="msg" style="margin:0">Borra la pregunta de un reto para que no salga. La respuesta correcta va en verde; el juego desordena las opciones.</p>
+    <div class="qs" id="qRetos"></div>
+    <h2 style="margin-top:8px">Paneles informativos</h2>
+    <p class="msg" style="margin:0">Cada panel está en un sitio del mapa. Puedes adaptar el texto y la pregunta a lo que hayáis visto en clase.</p>
+    <div class="qs" id="qPanels"></div>
+    <div class="row"><button id="bQSave" class="main">Guardar en la hoja</button><button id="bQDef">Volver a las originales</button></div>
+    <p class="msg" id="qMsg2"></p>
+    <p class="msg" style="margin:0">También puedes editar la pestaña Preguntas directamente en la hoja. Los alumnos que ya estén jugando ven los cambios la próxima vez que abran el juego.</p>
+   </div>
+  </section>
+
   <section id="tabCfg" hidden>
    <div class="card">
     <h2>Preparar la actividad</h2>
@@ -91,6 +132,8 @@ details summary{cursor:pointer;font-weight:700}
 // 1) Cambia la clave de la línea siguiente por una que solo conozcas tú.
 const CLAVE_PROFE = 'escribe-aqui-tu-clave';
 const HOJA = 'Resultados';
+const HOJA_PREG = 'Preguntas';
+const CAB_PREG = ['id', 'sobre', 'texto', 'pregunta', 'correcta', 'incorrecta 1', 'incorrecta 2', 'incorrecta 3'];
 
 function hoja_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -104,11 +147,13 @@ function hoja_() {
 }
 
 // Los alumnos envían su partida aquí (se actualiza la misma fila mientras juegan).
+// El panel de la profe también guarda aquí sus preguntas (con la clave).
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
     const d = JSON.parse(e.postData.contents);
+    if (d.tipo === 'preguntas') return guardarPreguntas_(d);
     if (!d.sid || !d.nombre) return salida_({ ok: false, error: 'datos' });
     const sh = hoja_();
     const ultima = sh.getLastRow();
@@ -123,14 +168,40 @@ function doPost(e) {
   }
 }
 
-// La página de la profe pide los resultados con la clave.
+// El juego pide las preguntas (?preguntas=1, sin clave) y la página de la profe pide los resultados con la clave.
 function doGet(e) {
-  if (!e.parameter || e.parameter.clave !== CLAVE_PROFE) return salida_({ ok: false, error: 'clave' });
+  const p = e.parameter || {};
+  if (p.preguntas) return salida_({ ok: true, preguntas: preguntas_() });
+  if (p.clave !== CLAVE_PROFE) return salida_({ ok: false, error: 'clave' });
   const sh = hoja_();
   const ultima = sh.getLastRow();
   const filas = ultima &gt; 1 ? sh.getRange(2, 1, ultima - 1, 8).getValues() : [];
   const datos = filas.map(f =&gt; { try { return JSON.parse(f[7]); } catch (err) { return null; } }).filter(Boolean);
   return salida_({ ok: true, filas: datos });
+}
+
+// Pestaña "Preguntas": una fila por reto o panel. También se puede editar a mano en la hoja.
+function preguntas_() {
+  const sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(HOJA_PREG);
+  if (!sh || sh.getLastRow() &lt; 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, CAB_PREG.length).getDisplayValues()
+    .filter(f =&gt; f[0])
+    .map(f =&gt; ({ id: f[0], sobre: f[1], texto: f[2], pregunta: f[3], correcta: f[4], incorrectas: f.slice(5) }));
+}
+
+function guardarPreguntas_(d) {
+  if (d.clave !== CLAVE_PROFE) return salida_({ ok: false, error: 'clave' });
+  if (!Array.isArray(d.preguntas)) return salida_({ ok: false, error: 'datos' });
+  // El apóstrofo guarda todo como texto: "+1.5 °C" no se convierte en fórmula ni "1/2" en fecha.
+  const txt = v =&gt; { v = String(v == null ? '' : v).trim().slice(0, 500); return v ? "'" + v : ''; };
+  const filas = [CAB_PREG].concat(d.preguntas.map(p =&gt;
+    [p.id, p.sobre, p.texto, p.pregunta, p.correcta].concat([0, 1, 2].map(i =&gt; (p.incorrectas || [])[i])).map(txt)));
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(HOJA_PREG) || ss.insertSheet(HOJA_PREG);
+  sh.clearContents();
+  sh.getRange(1, 1, filas.length, CAB_PREG.length).setValues(filas);
+  sh.setFrozenRows(1);
+  return salida_({ ok: true });
 }
 
 function salida_(o) {
@@ -263,9 +334,73 @@ $('bCsv').addEventListener('click',async()=>{
 });
 $('bPrint').addEventListener('click',()=>window.print());
 
+/* ---------- preguntas ---------- */
+/* Copia de las preguntas originales de index.html. Se actualiza con: node pruebas/comprobar-copias.js --arreglar */
+const DEF=[{"id":"reto1","sobre":"Reto 1 (año 2027)","texto":"¡Reto de la profe! A ver si recuerdas lo que hemos visto.","pregunta":"¿Qué gas es el principal responsable del cambio climático actual?","correcta":"CO₂ (dióxido de carbono)","incorrectas":["Oxígeno","Nitrógeno"]},{"id":"reto2","sobre":"Reto 2 (año 2029)","texto":"¡Reto de la profe!","pregunta":"¿Cuál de estas es una energía renovable?","correcta":"La solar","incorrectas":["El carbón","El petróleo"]},{"id":"reto3","sobre":"Reto 3 (año 2031)","texto":"¡Reto de la profe!","pregunta":"¿Qué hacen los árboles con el CO₂?","correcta":"Lo absorben al hacer la fotosíntesis","incorrectas":["Lo fabrican","Nada, lo ignoran"]},{"id":"reto4","sobre":"Reto 4 (año 2033)","texto":"¡Reto de la profe!","pregunta":"Mitigar el cambio climático es…","correcta":"Reducir las emisiones de gases","incorrectas":["Prepararse para las inundaciones","Negar el problema"]},{"id":"reto5","sobre":"Reto 5 (año 2035)","texto":"¡Reto de la profe!","pregunta":"¿Cuál es una medida de adaptación?","correcta":"Guardar agua para las sequías","incorrectas":["Quemar más gas","Ignorar el problema"]},{"id":"reto6","sobre":"Reto 6 (año 2037)","texto":"¡Reto de la profe!","pregunta":"¿Por qué es mala la deforestación para el clima?","correcta":"Hay menos árboles que absorban CO₂","incorrectas":["Hace que llueva más","Sube la sal del mar"]},{"id":"reto7","sobre":"Reto 7 (año 2039)","texto":"¡Reto de la profe!","pregunta":"¿Qué puedes hacer tú para ayudar?","correcta":"Ir andando o en bici y ahorrar energía","incorrectas":["Dejar las luces encendidas","Tirar plástico al mar"]},{"id":"reto8","sobre":"Reto 8 (año 2041)","texto":"¡Reto de la profe!","pregunta":"El límite de +1.5 °C se propone para…","correcta":"Frenar los peores efectos del calentamiento","incorrectas":["Medir la temperatura del aula","Calcular la altura de las olas"]},{"id":"reto9","sobre":"Reto 9 (año 2043)","texto":"¡Reto de la profe!","pregunta":"¿Qué es la huella de carbono?","correcta":"El CO₂ que emitimos con lo que hacemos","incorrectas":["La marca de un zapato en la arena","Un tipo de roca"]},{"id":"reto10","sobre":"Reto 10 (año 2045)","texto":"¡Reto de la profe!","pregunta":"¿Qué forma de ir al instituto emite menos CO₂?","correcta":"Ir andando o en bici","incorrectas":["Ir solo en coche","Ir en moto"]},{"id":"reto11","sobre":"Reto 11 (año 2047)","texto":"¡Reto de la profe!","pregunta":"¿Por qué en Almería hay desaladoras?","correcta":"Porque llueve poco y falta agua dulce","incorrectas":["Porque el mar está muy caliente","Para fabricar sal de mesa"]},{"id":"reto12","sobre":"Reto 12 (año 2049)","texto":"¡Reto de la profe!","pregunta":"Además del CO₂, ¿qué gas de la ganadería calienta mucho la atmósfera?","correcta":"El metano","incorrectas":["El oxígeno","El helio"]},{"id":"gei","sobre":"Panel: Efecto invernadero (Pueblo)","texto":"La atmósfera retiene parte del calor del Sol, como el cristal de un invernadero. Es natural y necesario: sin él la Tierra sería unos 33 °C más fría. El problema es el exceso de gases como el CO₂ y el metano.","pregunta":"¿Qué pasaría sin efecto invernadero natural?","correcta":"La Tierra sería mucho más fría","incorrectas":["Haría mucho más calor","No cambiaría nada"]},{"id":"causas","sobre":"Panel: Causas del cambio climático (Pueblo)","texto":"Al quemar petróleo, gas y carbón para el transporte, la electricidad y la industria se libera CO₂. La tala de bosques y la ganadería intensiva también aumentan los gases de efecto invernadero.","pregunta":"¿Qué actividad emite más CO₂?","correcta":"Quemar combustibles fósiles","incorrectas":["Regar un huerto","Plantar árboles"]},{"id":"desert","sobre":"Panel: Desertificación (Desierto de Tabernas)","texto":"Almería es una de las zonas más áridas de Europa. Con menos lluvia y más calor el suelo pierde plantas y se erosiona. Eso se llama desertificación.","pregunta":"¿Qué ayuda a frenar la desertificación?","correcta":"Mantener vegetación y cuidar el suelo","incorrectas":["Talar los árboles","Quemar rastrojos"]},{"id":"agua","sobre":"Panel: El agua en Almería (Desierto de Tabernas)","texto":"En Almería llueve poco y el agua viene de pozos, desaladoras y aguas regeneradas. Ahorrar agua y regar de forma eficiente es una forma de adaptarse al cambio climático.","pregunta":"Adaptarse al cambio climático es…","correcta":"Prepararnos para sus efectos","incorrectas":["Negar que existe","Emitir más CO₂"]},{"id":"clima","sobre":"Panel: Tiempo y clima (Sorbas)","texto":"El tiempo es lo que pasa hoy o esta semana: lluvia, calor, viento. El clima es el promedio del tiempo durante muchos años, normalmente 30 o más.","pregunta":"El clima de un lugar es…","correcta":"El promedio del tiempo durante muchos años","incorrectas":["Lo que pasa hoy","La previsión de mañana"]},{"id":"mitig","sobre":"Panel: Mitigar y adaptar (Sorbas)","texto":"Mitigar es reducir las emisiones, por ejemplo con energía solar o transporte público. Adaptar es prepararse para los efectos que ya llegan, por ejemplo guardando agua o protegiendo la costa. Hacen falta las dos cosas.","pregunta":"Instalar placas solares es una medida de…","correcta":"Mitigación","incorrectas":["Adaptación","Ninguna de las dos"]},{"id":"mar","sobre":"Panel: Sube el nivel del mar (Costa de Cabo de Gata)","texto":"Con el calentamiento el agua del mar se dilata y los glaciares y casquetes de hielo se funden, así que el nivel del mar sube. Las playas y las zonas bajas son las más afectadas.","pregunta":"¿Por qué sube el nivel del mar?","correcta":"El agua se dilata y el hielo se funde","incorrectas":["Llueve más en la costa","Hay más peces"]},{"id":"oceano","sobre":"Panel: El mar se calienta (Costa de Cabo de Gata)","texto":"El océano absorbe gran parte del calor y del CO₂ extra. Por eso se calienta y se acidifica. Las olas de calor marinas dañan praderas como las de posidonia.","pregunta":"El océano absorbe…","correcta":"Calor y CO₂ de la atmósfera","incorrectas":["Solo sal","Solo lluvia"]}];
+const isReto=id=>/^reto\d+$/.test(id),T=v=>String(v==null?'':v).trim();
+function qmsg(id,t,c){const m=$(id);m.textContent=t;m.className='msg'+(c?' '+c:'')}
+function field(lab,f,v,cls,area){return '<label class="'+(cls||'')+'">'+lab+(area?'<textarea rows="3" data-f="'+f+'">'+esc(v)+'</textarea>':'<input data-f="'+f+'" value="'+esc(v)+'"'+(f==='correcta'?' class="ok"':'')+'>')+'</label>'}
+function item(p){
+  const r=isReto(p.id),inc=p.incorrectas||[];
+  return '<details data-id="'+esc(p.id)+'" data-sobre="'+esc(p.sobre)+'"><summary><b>'+esc(p.sobre)+'</b> <span></span></summary><div class="grid">'
+   +field(r?'Texto antes de la pregunta (opcional)':'Texto del panel','texto',p.texto,'wide',true)
+   +field('Pregunta','pregunta',p.pregunta,'wide')
+   +field('Respuesta correcta','correcta',p.correcta)
+   +[0,1,2].map(i=>field('Incorrecta '+(i+1)+(i?' (opcional)':''),'inc'+i,inc[i]||'')).join('')+'</div></details>';
+}
+function sumUpdate(d){const q=T(d.querySelector('[data-f="pregunta"]').value);d.querySelector('summary span').innerHTML=q?esc(q):'<small>'+(isReto(d.dataset.id)?'Sin pregunta: este reto no sale':'Vacío: sale la original')+'</small>'}
+function fill(list){
+  $('qRetos').innerHTML=list.filter(p=>isReto(p.id)).map(item).join('');
+  $('qPanels').innerHTML=list.filter(p=>!isReto(p.id)).map(item).join('');
+  document.querySelectorAll('.qs details').forEach(sumUpdate);$('qEdit').hidden=false;
+}
+$('qEdit').addEventListener('input',e=>{const d=e.target.closest('details');if(d){d.classList.remove('err');sumUpdate(d)}});
+function collect(){
+  return [...document.querySelectorAll('.qs details')].map(d=>{const v=f=>T(d.querySelector('[data-f="'+f+'"]').value);
+    return {id:d.dataset.id,sobre:d.dataset.sobre,texto:v('texto'),pregunta:v('pregunta'),correcta:v('correcta'),incorrectas:[v('inc0'),v('inc1'),v('inc2')]}});
+}
+/* La hoja manda: un reto que no está en ella no sale; un panel que falta o está vacío muestra el original. */
+function merge(rows){
+  const by=new Map(rows.map(p=>[T(p.id),p]));
+  return DEF.map(d=>{
+    const p=by.get(d.id);if(!p)return isReto(d.id)&&rows.length?Object.assign({},d,{texto:'',pregunta:'',correcta:'',incorrectas:[]}):d;
+    const inc=(p.incorrectas||[]).map(T),full=T(p.pregunta)&&T(p.correcta)&&inc.some(Boolean);
+    if(!isReto(d.id)&&!full)return Object.assign({},d,{texto:T(p.texto)||d.texto});
+    return {id:d.id,sobre:d.sobre,texto:T(p.texto),pregunta:T(p.pregunta),correcta:T(p.correcta),incorrectas:inc};
+  });
+}
+const qurl=()=>$('qUrl').value.trim();
+async function getQ(u){const r=await fetch(u+(u.includes('?')?'&':'?')+'preguntas=1');const j=await r.json();if(!j.ok||!Array.isArray(j.preguntas))throw 0;return j.preguntas}
+$('bQLoad').addEventListener('click',async()=>{
+  const u=qurl();
+  if(!/^(https:\/\/|http:\/\/localhost)/.test(u)){qmsg('qMsg','Escribe la dirección de la hoja (empieza por https://).','bad');return}
+  store.set('pf_url',u);qmsg('qMsg','Cargando…');
+  try{const rows=await getQ(u);fill(merge(rows));qmsg('qMsg',rows.length?'Estas son tus preguntas guardadas en la hoja.':'Tu hoja todavía no tiene preguntas propias: estas son las originales. Cámbialas y pulsa Guardar en la hoja.','good')}
+  catch(e){qmsg('qMsg','No se pudieron leer las preguntas. Revisa la dirección y, si preparaste la hoja antes, actualiza el código (mira el desplegable de abajo).','bad')}
+});
+$('bQDef').addEventListener('click',()=>{fill(DEF);qmsg('qMsg2','Se han puesto las preguntas originales. Pulsa Guardar en la hoja para que el juego las use.')});
+$('bQSave').addEventListener('click',async()=>{
+  const list=collect(),bad=[];
+  document.querySelectorAll('.qs details').forEach((d,i)=>{const p=list[i],any=p.pregunta||p.correcta||p.incorrectas.some(Boolean);
+    const ok=!any||(p.pregunta&&p.correcta&&p.incorrectas.some(Boolean));d.classList.toggle('err',!ok);if(!ok){bad.push(p.sobre);d.open=true}});
+  if(bad.length){qmsg('qMsg2','Falta la pregunta, la respuesta correcta o al menos una incorrecta en: '+bad.join(', ')+'.','bad');return}
+  const u=qurl(),k=$('qKey').value;
+  if(!k){qmsg('qMsg2','Escribe tu clave arriba para poder guardar.','bad');return}
+  const retos=list.filter(p=>isReto(p.id)&&p.pregunta).length;
+  qmsg('qMsg2','Guardando…');
+  const o={method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({tipo:'preguntas',clave:k,preguntas:list})};
+  const done=()=>qmsg('qMsg2','Guardado. '+(retos?'El juego hará '+retos+' reto'+(retos>1?'s':'')+' de la profe.':'No hay ningún reto con pregunta, así que el juego usará los originales.'),retos?'good':'');
+  try{const j=await (await fetch(u,o)).json();if(j.ok)done();else qmsg('qMsg2',j.error==='clave'?'La clave no es correcta.':'La hoja no aceptó los datos. ¿Has actualizado el código de Apps Script?','bad');return}catch(e){}
+  // Si el navegador no deja leer la respuesta, se envía igualmente y se comprueba leyendo la hoja.
+  try{await fetch(u,Object.assign({mode:'no-cors'},o));const back=await getQ(u);
+    if(JSON.stringify(merge(back).map(p=>[p.pregunta,p.correcta]))===JSON.stringify(merge(list).map(p=>[p.pregunta,p.correcta])))done();
+    else qmsg('qMsg2','No se guardó. Revisa tu clave y que hayas actualizado el código de Apps Script.','bad')}
+  catch(e){qmsg('qMsg2','No se pudo conectar con la hoja. Revisa la dirección.','bad')}
+});
+
 /* ---------- pestañas y configuración ---------- */
-function tab(n){$('tabRes').hidden=n!=='res';$('aDet').hidden=n!=='res'||!sel;$('tabCfg').hidden=n!=='cfg';$('nRes').className=n==='res'?'on':'';$('nCfg').className=n==='cfg'?'on':''}
-$('nRes').addEventListener('click',()=>tab('res'));$('nCfg').addEventListener('click',()=>tab('cfg'));
+function tab(n){$('tabRes').hidden=n!=='res';$('aDet').hidden=n!=='res'||!sel;$('tabPre').hidden=n!=='pre';$('tabCfg').hidden=n!=='cfg';[['nRes','res'],['nPre','pre'],['nCfg','cfg']].forEach(([b,t])=>$(b).className=n===t?'on':'')}
+$('nRes').addEventListener('click',()=>tab('res'));$('nPre').addEventListener('click',()=>{if(!qurl())$('qUrl').value=$('aUrl').value;if(!$('qKey').value)$('qKey').value=$('aKey').value;tab('pre')});$('nCfg').addEventListener('click',()=>tab('cfg'));
 async function copy(id,btn){const t=$(id);t.select();let ok=false;try{await navigator.clipboard.writeText(t.value);ok=true}catch(e){try{ok=document.execCommand('copy')}catch(e2){}}btn.textContent=ok?'Copiado':'Selecciona y copia con Ctrl+C'}
 $('bCopyCode').addEventListener('click',e=>copy('cCode',e.target));
 $('bCopyLink').addEventListener('click',e=>copy('cLink',e.target));

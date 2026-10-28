@@ -1,3 +1,13 @@
+# Copias en profe.html
+
+`profe.html` incluye el código de `apps-script/Code.gs` y las preguntas originales del juego. Después de cambiar cualquiera de los dos:
+
+```bash
+node pruebas/comprobar-copias.js --arreglar
+```
+
+El servidor de prueba también imita la pestaña Preguntas (`?preguntas=1` y el guardado con la clave `clave-test`).
+
 # Simular una clase
 
 Juega muchas partidas con el juego real, sin dibujar y con el tiempo acelerado (unos 9 s por partida), con alumnos de perfiles distintos (aplicado, normal, solo plantar, despistado, pasivo, explorador). Un 10 % recarga la página a mitad de partida.

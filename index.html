@@ -192,7 +192,27 @@ const RETOS=[
  {fact:'¡Reto de la profe!',q:'¿Por qué en Almería hay desaladoras?',o:['Porque llueve poco y falta agua dulce','Porque el mar está muy caliente','Para fabricar sal de mesa'],a_:0},
  {fact:'¡Reto de la profe!',q:'Además del CO₂, ¿qué gas de la ganadería calienta mucho la atmósfera?',o:['El metano','El oxígeno','El helio'],a_:0}
 ];
-RETOS.forEach((r,i)=>{CARDS['reto'+i]=Object.assign({n:'Reto de la profe',kind:'Reto',c:'#7bd88f',rw:4},r)});
+function setRetos(list){
+  Object.keys(CARDS).forEach(k=>{if(/^reto\d+$/.test(k))delete CARDS[k]});
+  RETOS.length=0;list.forEach(r=>RETOS.push(r));
+  RETOS.forEach((r,i)=>{CARDS['reto'+i]=Object.assign({n:'Reto de la profe',kind:'Reto',c:'#7bd88f',rw:4},r)});
+}
+setRetos(RETOS.slice());
+/* Preguntas de la profe (pestaña Preguntas de su hoja, editable desde profe.html). Un panel sin pregunta completa
+   conserva la original; los retos vacíos no se hacen y, si no queda ninguno, se usan los originales. */
+const PANELS=['gei','causas','desert','agua','clima','mitig','mar','oceano'];
+const Q0={p:Object.fromEntries(PANELS.map(k=>[k,{fact:CARDS[k].fact,q:CARDS[k].q,o:CARDS[k].o.slice(),a_:CARDS[k].a_}])),r:RETOS.slice()};
+function applyQ(list){
+  if(!Array.isArray(list))return;
+  const t=v=>String(v==null?'':v).trim(),inc=p=>(Array.isArray(p.incorrectas)?p.incorrectas:[]).map(t).filter(Boolean);
+  const full=p=>t(p.pregunta)&&t(p.correcta)&&inc(p).length>0,opts=p=>[t(p.correcta)].concat(inc(p)).slice(0,4);
+  PANELS.forEach(k=>Object.assign(CARDS[k],Q0.p[k],{o:Q0.p[k].o.slice()}));
+  list.forEach(p=>{const k=t(p&&p.id);if(!PANELS.includes(k))return;const C=CARDS[k];
+    if(t(p.texto))C.fact=t(p.texto);if(full(p)){C.q=t(p.pregunta);C.o=opts(p);C.a_=0}});
+  const mine=list.filter(p=>p&&/^reto\d+$/.test(t(p.id))&&full(p)).slice(0,12)
+    .map(p=>({fact:t(p.texto)||'¡Reto de la profe!',q:t(p.pregunta),o:opts(p),a_:0}));
+  setRetos(mine.length?mine:Q0.r);
+}
 const BOARDS=[[['desert','agua'],['clima','mitig']],[['gei','causas'],['mar','oceano']]];
 const POLICIES=[
  {id:'bus',t:'Mitigación',n:'Transporte público y bicis',cost:price(14),e:'Las emisiones del pueblo bajan '+ppmTxt(BAL.bus)+' ppm al año.'},
@@ -229,6 +249,15 @@ const QUESTS=[
 /* Enlace de clase: #c=<base64 de {u: URL de la hoja de la profe, g: grupo}> */
 let CFG={};
 try{const m=/#c=([A-Za-z0-9_-]+)/.exec(location.hash);if(m){const b=m[1].replace(/-/g,'+').replace(/_/g,'/');CFG=JSON.parse(decodeURIComponent(escape(atob(b))))}}catch(e){CFG={}}
+/* Con enlace de clase se usan las preguntas de la hoja; la última copia queda en el navegador por si falla la conexión. */
+if(CFG.u){
+  const qk='cg_q|'+CFG.u;
+  try{applyQ(JSON.parse(localStorage.getItem(qk)||'null'))}catch(e){}
+  fetch(CFG.u+(CFG.u.includes('?')?'&':'?')+'preguntas=1').then(r=>r.json()).then(j=>{
+    if(!j||!j.ok||!Array.isArray(j.preguntas))return;
+    applyQ(j.preguntas);try{localStorage.setItem(qk,JSON.stringify(j.preguntas))}catch(e){}
+  }).catch(()=>{});
+}
 const esc=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const cv=document.getElementById('cv'), ctx=cv.getContext('2d');
 const $=id=>document.getElementById(id);
@@ -426,9 +455,9 @@ function showCard(key,again){
   const R=CARDS[key];
   modal(`<div class="head"><div class="sw" style="background:${R.c}"></div><div><h2>${R.n}</h2></div></div>
   <span class="tag">${R.kind}</span>
-  <p>${R.fact}</p>
-  ${again?'<button class="btn" data-act="close">Seguir</button>':`<p><b>${R.q}</b></p>
-  <div class="opts">${shuffle(R.o.map((o,i)=>i)).map(i=>`<button class="opt" data-act="opt" data-i="${i}" data-k="${key}">${R.o[i]}</button>`).join('')}</div>
+  <p>${esc(R.fact)}</p>
+  ${again?'<button class="btn" data-act="close">Seguir</button>':`<p><b>${esc(R.q)}</b></p>
+  <div class="opts">${shuffle(R.o.map((o,i)=>i)).map(i=>`<button class="opt" data-act="opt" data-i="${i}" data-k="${key}">${esc(R.o[i])}</button>`).join('')}</div>
   <div id="fb"></div>`}`);
 }
 function answer(b){
@@ -437,7 +466,7 @@ function answer(b){
   if(!ok)b.classList.add('wrong');
   if(ok)S.sci+=rw;
   S.ans.push({k:key,q:R.q,e:R.o[i],c:R.o[R.a_],ok:ok?1:0});
-  $('fb').innerHTML=`<p>${ok?'¡Correcto! +'+rw+' 🔬':'Casi. La respuesta correcta es: <b>'+R.o[R.a_]+'</b>.'}</p><button class="btn" data-act="close" style="margin-top:10px;width:100%">Seguir</button>`;
+  $('fb').innerHTML=`<p>${ok?'¡Correcto! +'+rw+' 🔬':'Casi. La respuesta correcta es: <b>'+esc(R.o[R.a_])+'</b>.'}</p><button class="btn" data-act="close" style="margin-top:10px;width:100%">Seguir</button>`;
   refresh();
 }
 function foundRock(t){
@@ -901,7 +930,7 @@ function loop(now){
   draw(dt);
   requestAnimationFrame(loop);
 }
-if(window.__TEST__)window.__g={get S(){return S},yearTick,count,CARDS,COST,POLICIES,run(sec){let t=0;while(t<sec&&!S.paused){tick(.1);t+=.1}return t}};
+if(window.__TEST__)window.__g={get S(){return S},yearTick,count,CARDS,RETOS,showCard,COST,POLICIES,run(sec){let t=0;while(t<sec&&!S.paused){tick(.1);t+=.1}return t}};
 newGame();setMode('world');if(!tryResume())askName();
 requestAnimationFrame(loop);
 })();

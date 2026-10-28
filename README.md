@@ -20,6 +20,10 @@ Abre `profe.html` → pestaña **Configuración** y sigue los pasos. En resumen:
 4. En el panel, pega esa URL y pulsa **Crear enlace**. Ese enlace es el que das a los alumnos (puede llevar el grupo, por ejemplo 1º A).
 5. Para ver resultados: pestaña **Resultados**, pega la URL y tu clave y pulsa **Cargar resultados**.
 
+## Cambiar las preguntas
+
+En `profe.html` → pestaña **Preguntas**: pega la URL y tu clave, pulsa **Cargar mis preguntas**, cambia los retos o los paneles y pulsa **Guardar en la hoja**. Se guardan en la pestaña *Preguntas* de tu hoja y el juego las usa con el enlace de clase. Si ya tenías la hoja preparada, vuelve a pegar el código de `apps-script/Code.gs` (con tu clave) y en **Implementar → Gestionar implementaciones** crea una nueva versión: la URL no cambia.
+
 Si un alumno abre el juego sin el enlace de clase, juega en modo práctica: no se envía nada y solo queda el certificado.
 
 Los nombres se guardan solo en la hoja de Google de la profe. Conviene informar al centro y a las familias según su protocolo de protección de datos.
